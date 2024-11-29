@@ -36,14 +36,19 @@ if [ $hugepages -le 0 ]; then
   exit 0
 fi
 
-cmdline="$(</proc/cmdline) hugepages=$hugepages"
-release=$(uname -r)
 
-NEWROOT=${NEWROOT:-/sysroot}
+echo $hugepages > /proc/sys/vm/nr_hugepages
+# might get more hugepages and faster with the kernel cmdline, but like this you avoid a kexec reboot.
 
-kexec \
-  -l $NEWROOT/boot/vmlinuz-${release} \
-  --initrd=$NEWROOT/boot/initrd.img-${release} \
-  --command-line="$cmdline"
 
-kexec -e --reset-vga
+#cmdline="$(</proc/cmdline) hugepages=$hugepages"
+#release=$(uname -r)
+
+#NEWROOT=${NEWROOT:-/sysroot}
+
+#kexec \
+#  -l $NEWROOT/boot/vmlinuz-${release} \
+#  --initrd=$NEWROOT/boot/initrd.img-${release} \
+#  --command-line="$cmdline"
+
+#kexec -e --reset-vga

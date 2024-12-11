@@ -12,5 +12,5 @@ depends() {
 # Install the required file(s) and directories for the module in the initramfs.
 install() {
 	inst_hook pre-pivot 00 "$moddir/ensure-hugepages.sh"
-	inst kexec
+	#inst kexec
 }

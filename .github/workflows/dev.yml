@@ -24,7 +24,6 @@ jobs:
         run: echo "VERSION=$(cat VERSION)" >> $GITHUB_OUTPUT
   build:
     needs: [set_version]
-    uses: ./.github/workflows/build.yml
+    uses: gardenlinux/gardenlinux/.github/workflows/build.yml@feat/ccloud_gh_actions
     with:
       version: ${{ needs.set_version.outputs.VERSION }}
-      arch: '["amd64"]'

@@ -1,0 +1,30 @@
+name: nightly
+on:
+  schedule:
+    - cron: "0 6 * * *"
+  # triggered manually
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to build"
+        type: string
+        default: now
+      use_kms:
+        description: "Use KMS to encrypt the secureboot db"
+        type: boolean
+        required: false
+        default: false
+jobs:
+  checkout:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: "recursive"
+  build:
+    needs: [checkout]
+    uses: gardenlinux/gardenlinux/.github/workflows/build.yml@main
+    with:
+      version: ${{ inputs.version || 'now' }}
+      use_kms: ${{ github.event_name != 'workflow_dispatch' || inputs.use_kms }}

@@ -9,11 +9,6 @@ on:
         description: "Version to build"
         type: string
         default: now
-      use_kms:
-        description: "Use KMS to encrypt the secureboot db"
-        type: boolean
-        required: false
-        default: false
 jobs:
   checkout:
     runs-on: ubuntu-latest
@@ -27,4 +22,3 @@ jobs:
     uses: gardenlinux/gardenlinux/.github/workflows/build.yml@main
     with:
       version: ${{ inputs.version || 'now' }}
-      use_kms: ${{ github.event_name != 'workflow_dispatch' || inputs.use_kms }}

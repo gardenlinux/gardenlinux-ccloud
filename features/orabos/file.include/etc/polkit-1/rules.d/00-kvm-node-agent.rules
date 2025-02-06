@@ -1,9 +1,11 @@
-// Allow kvm-node-agent to manage sysupgrade-sysupdate service units;
+// Allow kvm-node-agent to manage specific service units;
 // fall back to implicit authorization otherwise.
+
+const units = ["systemd-sysupdate", "libvirtd", "virt-admin"];
 polkit.addRule(function(action, subject) {
     if (action.id == "org.freedesktop.systemd1.manage-units" &&
     subject.user == "kvm-node-agent" &&
-    action.lookup("unit").startsWith("systemd-sysupdate")) {
+    units.filter(function (unit) { return action.lookup("unit").startsWith(unit) }).length ) {
         return polkit.Result.YES;
     }
 });

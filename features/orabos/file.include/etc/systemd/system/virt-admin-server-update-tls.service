@@ -1,0 +1,10 @@
+[Unit]
+Description=Run virt-admin server-update-tls
+Documentation=man:virt-admin(1)
+Wants=libvirtd.service
+After=libvirtd.service
+ConditionVirtualization=!container
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/virt-admin server-update-tls --server libvirtd

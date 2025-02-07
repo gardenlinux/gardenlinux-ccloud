@@ -8,6 +8,8 @@ if [ -n "$currentfstab" ]; then
 	sed \
 	  -e'/type=uefi/ s/$/,size=511M/' \
 	  -e '/^[^[:space:]]\+[[:space:]]\+\/usr[[:space:]]\+/d' \
-      -e 's/LABEL=ROOT/LABEL=garden_'$BUILDER_VERSION'/' \
 	  <<< "$currentfstab"
 fi
+
+# rename root label to gardenlinux_${GARDENLINUX_VERSION}
+sed 's/LABEL=ROOT/LABEL=garden_'$BUILDER_VERSION'/'

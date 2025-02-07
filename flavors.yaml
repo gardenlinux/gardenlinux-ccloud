@@ -27,3 +27,14 @@ targets:
         test: true
         test-platform: false
         publish: false
+  - name: metal 
+    category: baremetal
+    flavors:
+      - features:
+          - orabos
+          - _pxe
+        arch: amd64
+        build: true
+        test: true
+        test-platform: false
+        publish: false

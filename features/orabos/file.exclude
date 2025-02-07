@@ -1,4 +1,2 @@
 /etc/systemd/network/99-default.network
 /etc/systemd/system/systemd-resolved.service.d/wait-for-networkd.conf
-/etc/repart.d/root.conf
-/etc/kernel/cmdline.d/99-no-gpt-auto.cfg

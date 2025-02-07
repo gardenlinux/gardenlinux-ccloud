@@ -1,2 +1,0 @@
-# The OS reboot needs to be orchestrated
-disable systemd-sysupdate-reboot.timer

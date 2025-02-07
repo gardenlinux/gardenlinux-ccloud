@@ -9,7 +9,4 @@ if [ -n "$currentfstab" ]; then
 	  -e'/type=uefi/ s/$/,size=511M/' \
 	  -e '/^[^[:space:]]\+[[:space:]]\+\/usr[[:space:]]\+/d' \
 	  <<< "$currentfstab"
-
-    # systemd-syslinux: rename ROOT label to gardenlinux_${GARDENLINUX_VERSION}
-	sed -e 's/LABEL=ROOT/LABEL=gardenlinux_'$BUILDER_VERSION'/g' <<< "$currentfstab"
 fi

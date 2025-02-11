@@ -31,7 +31,7 @@ targets:
     category: baremetal
     flavors:
       - features:
-          - orabos
+          - sci
           - _pxe
         arch: amd64
         build: true

@@ -19,12 +19,12 @@ jobs:
           submodules: "recursive"
   build:
     needs: [checkout]
-    uses: gardenlinux/gardenlinux/.github/workflows/build.yml@main
+    uses: gardenlinux/gardenlinux/.github/workflows/build.yml@e0fe0ae39b8070778a87c57c2926439583b9751e
     with:
       version: ${{ inputs.version || 'now' }}
   upload_oci:
     name: Run glcli to publish to OCI
-    needs: [ build ]
+    needs: [build]
     uses: ./.github/workflows/upload_oci.yml
     with:
       version: ${{ needs.build.outputs.version }}

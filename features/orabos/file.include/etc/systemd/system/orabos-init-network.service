@@ -1,6 +1,7 @@
 [Unit]
 Description=Orabos Init Network
 DefaultDependencies=no
+ConditionFileIsExecutable=/usr/sbin/netplan
 Wants=ovsdb-server.service
 Wants=ovs-vswitchd.service
 After=ovsdb-server.service

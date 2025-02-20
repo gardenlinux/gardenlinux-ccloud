@@ -2,6 +2,4 @@ description: "ORA Baremetal OS"
 type: element
 features:
   include: 
-    - gardener
-    - vhost
-    - _slim
+    - sci

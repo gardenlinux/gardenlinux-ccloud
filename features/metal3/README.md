@@ -1,8 +1,7 @@
-## Feature: ignite
+## Feature: metal3
 
-<website-feature> ignition is installed on the system. </website-feature>
+<website-feature> Creates a metal3 installable image. </website-feature>
 
 ---
 
 	Type: element
-#

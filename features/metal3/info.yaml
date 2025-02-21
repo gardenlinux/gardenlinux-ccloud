@@ -4,4 +4,3 @@ features:
   include:
     - _ignite
     - sssd
-    - gardener

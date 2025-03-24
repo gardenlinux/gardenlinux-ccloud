@@ -9,7 +9,7 @@ on:
       - "**/README.md"
       - "docs/**"
 jobs:
-  set_version:
+  prepare:
     runs-on: ubuntu-latest
     outputs:
       VERSION: ${{ steps.version.outputs.VERSION }}
@@ -22,8 +22,13 @@ jobs:
       - name: use VERSION file to support dev build on rel-branch
         id: version
         run: echo "VERSION=$(cat VERSION)" >> $GITHUB_OUTPUT
+
+      - name: Copy flavors.yaml
+        run: |
+          cp flavors.yaml gardenlinux/
   build:
-    needs: [set_version]
+    needs:
+      - prepare
     uses: gardenlinux/gardenlinux/.github/workflows/build.yml@main
     with:
-      version: ${{ needs.set_version.outputs.VERSION }}
+      version: ${{ needs.prepare.outputs.VERSION }}

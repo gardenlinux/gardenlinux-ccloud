@@ -1,1 +1,4 @@
 .build
+.envrc
+.venv
+shell.nix

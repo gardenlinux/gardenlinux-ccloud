@@ -17,13 +17,14 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          submodules: "recursive"
+          submodules: recursive
 
       - name: use VERSION file to support dev build on rel-branch
         id: version
         run: echo "VERSION=$(cat VERSION)" >> $GITHUB_OUTPUT
+
   build:
     needs: [set_version]
-    uses: gardenlinux/gardenlinux/.github/workflows/build.yml@main
+    uses: gardenlinux/gardenlinux/.github/workflows/build.yml@94b65dd96cd6a277d205829e03690005233524c0
     with:
       version: ${{ needs.set_version.outputs.VERSION }}

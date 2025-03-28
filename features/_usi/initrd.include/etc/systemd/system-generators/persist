@@ -1,0 +1,58 @@
+#!/bin/bash
+
+exec 1> /dev/kmsg
+exec 2>&1
+
+set -eufo pipefail
+
+if ! grep -q 'ignition.firstboot=1' /proc/cmdline; then
+	exit 0
+fi
+GENERATOR_DIR="$1"
+mkdir -p "$GENERATOR_DIR"/initrd.target.wants
+mkdir -p "$GENERATOR_DIR"/usi.target.wants
+mkdir -p "$GENERATOR_DIR"/systemd-repart.service.d
+mkdir -p "$GENERATOR_DIR"/sysroot-var.mount.d
+
+cat > "$1/systemd-repart.service.d/override.conf" << EOF
+[Unit]
+
+[Service]
+ExecStart=
+ExecStart=/bin/bash -c "exit 0"
+EOF
+
+cat > "$1/persist.service" << EOF
+[Unit]
+ConditionPathExists=/etc/initrd-release
+DefaultDependencies=false
+Before=persist.target
+
+OnFailure=emergency.target
+OnFailureJobMode=isolate
+
+After=ignition-complete.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/bin/persist
+# TODO: move all this to generator
+EOF
+
+cat > "$1/sysroot-var.mount.d/override.conf" << EOF
+[Unit]
+Requires=persist.service
+After=persist.service
+EOF
+
+cat > "$1/persist.target" << EOF
+[Unit]
+ConditionPathExists=/etc/initrd-release
+After=ignition-complete.target
+Requires=ignition-complete.target
+Before=initrd.target
+EOF
+
+ln -s $1/persist.target "$GENERATOR_DIR"/initrd.target.wants/persist.target
+ln -s $1/persist.service "$GENERATOR_DIR"/usi.target.wants/persist.service

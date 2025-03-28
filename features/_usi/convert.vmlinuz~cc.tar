@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+
+set -eufo pipefail
+
+tar --extract --to-stdout "vmlinuz" < "$1" > "$2"

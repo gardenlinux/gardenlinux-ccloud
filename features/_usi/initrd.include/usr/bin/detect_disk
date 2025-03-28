@@ -1,0 +1,13 @@
+#!/bin/bash
+
+set -eu
+
+if ! [[ -f /sysroot/opt/persist/root-hints.yaml ]]; then
+	echo "no root-hints.yaml provided, error"
+	exit 1
+fi
+if kname=$(/usr/bin/root-hints /sysroot/opt/persist/root-hints); then
+	echo "/dev/${kname}"
+else
+	exit 1
+fi

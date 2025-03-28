@@ -1,0 +1,9 @@
+[Unit]
+#Requires=persist.service
+#After=persist.service
+#DefaultDependencies=no
+
+[Mount]
+What=/dev/disk/by-partlabel/VAR
+Where=/sysroot/var
+Type=ext4

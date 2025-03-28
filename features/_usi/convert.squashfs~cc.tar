@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+
+set -eufo pipefail
+# name is wrong, but it's temporary till the OCI spec gets fixed
+tar --extract --to-stdout "squashfs" < "$1" > "$2"

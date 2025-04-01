@@ -2,6 +2,7 @@ description: "SCI Baremetal OS"
 type: element
 features:
   include:
+    - _rescue
     - _slim
     - gardener
     - sssd

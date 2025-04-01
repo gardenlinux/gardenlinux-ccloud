@@ -38,3 +38,10 @@ targets:
         test: true
         test-platform: false
         publish: false
+      - features:
+          - capi
+        arch: amd64
+        build: true
+        test: true
+        test-platform: false
+        publish: false

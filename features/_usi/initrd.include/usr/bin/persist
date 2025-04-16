@@ -90,9 +90,7 @@ for e in $(efibootmgr | awk '$NF ~ /^HD/ { print $1 }' | sed "s/Boot\([0-9A-F]*\
 	efibootmgr -B -b "$e" > /dev/null
 done
 
-efibootmgr -c -L "Gardenlinux" -l '\EFI\BOOT\BOOTX64.EFI'
-entry=$(efibootmgr | grep Gardenlinux | awk '{print $1}' | sed "s/Boot\([0-9A-F]*\)./\1/")
-efibootmgr -b $entry -a
+efibootmgr -c -L "Gardenlinux" -l '\EFI\BOOT\BOOTX64.EFI' -d /dev/disk/by-label/ESP
 
 # reboot
 systemctl reboot -f

@@ -78,6 +78,27 @@ if [[ -x /sysroot/opt/persist/network_up.sh ]]; then
 	chroot /sysroot /opt/persist/network_up.sh
 fi
 
+# fstab should be blank
+echo "# fstab should be blank" > /sysroot/etc/fstab
+
+# generate the efi mount
+cat << EOF >> /sysroot/etc/systemd/system/efi.mount
+[Unit]
+Before=local-fs.target
+Requires=systemd-fsck@dev-disk-by\x2dlabel-ESP.service
+After=systemd-fsck@dev-disk-by\x2dlabel-ESP.service
+After=blockdev@dev-disk-by\x2dlabel-ESP.target
+
+[Mount]
+What=/dev/disk/by-label/ESP
+Where=/efi
+Type=vfat
+Options=umask=0077
+
+[Install]
+WantedBy=local-fs.target
+EOF
+
 # TODO: support ignition provided configs as well
 systemd-repart --root=/ --dry-run=no --tpm2-device=auto --tpm2-pcrs=7 "$disk_dev"
 udevadm settle

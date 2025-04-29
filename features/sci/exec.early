@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+
+cat >/etc/apt/preferences.d/containerd <<-EOT
+Package: containerd
+Pin: release n=1850.0
+Pin-Priority: 950
+EOT
+
+cat >/etc/apt/preferences.d/gardenlinux <<-EOT
+Package: *
+Pin: release n=$BUILDER_VERSION
+Pin-Priority: 900
+EOT
+
+cat >/etc/apt/sources.list.d/gardenlinux-1850.0.list <<-EOT
+deb https://packages.gardenlinux.io/gardenlinux 1850.0 main
+EOT

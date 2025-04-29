@@ -6,8 +6,20 @@ exec 2>&1
 set -eufo pipefail
 
 if ! grep -q 'ignition.firstboot=1' /proc/cmdline; then
-	exit 0
+
+# repart should be disabled
+# TODO: find nicer way to disable
+cat > "$1/systemd-repart.service.d/override.conf" << EOF
+[Unit]
+
+[Service]
+ExecStart=
+ExecStart=/bin/bash -c "exit 0"
+EOF
+exit 0
+
 fi
+
 GENERATOR_DIR="$1"
 mkdir -p "$GENERATOR_DIR"/initrd.target.wants
 mkdir -p "$GENERATOR_DIR"/usi.target.wants

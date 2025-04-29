@@ -1,8 +1,8 @@
 name: nightly
 on:
-  schedule:
-    - cron: "0 6 * * *"
-  # triggered manually
+#  schedule:
+#    - cron: "0 6 * * *"
+#  # triggered manually
   workflow_dispatch:
     inputs:
       version:

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -eufo pipefail
+set -Eeufo pipefail
 
 efi_part_dev="$(realpath "$1")"
 efi_part_name="$(basename "$efi_part_dev")"

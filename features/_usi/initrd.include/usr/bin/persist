@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -xeufo pipefail
+set -Eeufo pipefail
 
 if ! disk_dev=$(/usr/bin/detect_disk); then
 	exit 1
@@ -64,7 +64,7 @@ if ! [[ -f /sysroot/opt/persist/uki ]]; then
 	exit 1
 fi
 export HOME=/root
-oras blob fetch $(< /sysroot/opt/persist/uki) -o /sysroot/efi/EFI/Linux/uki.efi
+oras blob fetch "$(< /sysroot/opt/persist/uki)" -o /sysroot/efi/EFI/Linux/uki.efi
 
 # update the kernel cmdline in the uki
 # TODO: when using the USI tool to perform the in place update, should the cmdline of the new image also be changed?

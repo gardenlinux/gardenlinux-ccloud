@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -eu
+set -Eeuo pipefail
 
 function yqroot() {
 	cat "$1" | chroot /sysroot /usr/bin/yq -c '.hints | .[]'

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-set -uoeE pipefail
+set -Eeuo pipefail
 
 configDir="/etc/kernel/cmdline.d"
 

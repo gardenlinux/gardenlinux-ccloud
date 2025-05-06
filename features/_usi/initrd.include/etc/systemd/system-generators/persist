@@ -3,7 +3,7 @@
 exec 1> /dev/kmsg
 exec 2>&1
 
-set -eufo pipefail
+set -Eeufo pipefail
 
 if ! grep -q 'ignition.firstboot=1' /proc/cmdline; then
 

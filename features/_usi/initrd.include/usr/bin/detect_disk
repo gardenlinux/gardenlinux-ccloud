@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -eu
+set -Eeuo pipefail
 
 ROOT_HINTS_FILE="/sysroot/opt/persist/root-hints.yaml"
 

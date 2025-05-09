@@ -15,3 +15,5 @@ EOT
 cat >/etc/apt/sources.list.d/gardenlinux-1850.0.list <<-EOT
 deb https://packages.gardenlinux.io/gardenlinux 1850.0 main
 EOT
+
+apt-get update

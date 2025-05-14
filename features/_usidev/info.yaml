@@ -1,0 +1,5 @@
+description: "enable dev mode for the USI feature"
+type: flag
+features:
+  include:
+    - _usi

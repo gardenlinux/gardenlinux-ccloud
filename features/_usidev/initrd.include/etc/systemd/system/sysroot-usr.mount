@@ -1,0 +1,9 @@
+[Unit]
+After=sysroot-var.mount
+ConditionKernelCommandLine=usidev=on
+
+[Mount]
+What=overlay
+Where=/sysroot/usr
+Type=overlay
+Options=lowerdir=/sysroot/usr,upperdir=/sysroot/var/usr.overlay,workdir=/sysroot/var/usr.overlay.workdir

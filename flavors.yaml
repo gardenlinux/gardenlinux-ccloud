@@ -25,3 +25,11 @@ targets:
         test: true
         test-platform: false
         publish: false
+      - features:
+          - sci
+          - _usidev
+        arch: amd64
+        build: true
+        test: true
+        test-platform: false
+        publish: false

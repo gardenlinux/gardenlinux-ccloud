@@ -70,6 +70,9 @@ OCI_ARCH="${OCI_ARCH:-amd64}"
 # source os-release file
 . "$OS_RELEASE_FILE"
 
+# oras needs a proper HOME variable
+export HOME=/root
+
 # setup OCI_TAG, UKI_SHA and fetch UKI
 OCI_TAG="$GARDENLINUX_VERSION-$GARDENLINUX_CNAME-$GARDENLINUX_COMMIT_ID-$OCI_ARCH"
 UKI_SHA=$(oras manifest fetch "$OCI_REPO:${OCI_TAG}" | jq -r '.layers[] | select(.mediaType=="application/io.gardenlinux.uki") | .digest')

@@ -1,32 +1,4 @@
 targets:
-  - name: openstackbaremetal
-    category: baremetal
-    flavors:
-      - features:
-          - metal3
-          - orabos
-        arch: amd64
-        build: true
-        test: true
-        test-platform: false
-        publish: false
-      - features:
-          - orabos
-        arch: amd64
-        build: true
-        test: true
-        test-platform: false
-        publish: false
-  - name: vmware
-    category: hypervisor
-    flavors:
-      - features:
-          - orabos
-        arch: amd64
-        build: true
-        test: true
-        test-platform: false
-        publish: false
   - name: metal 
     category: baremetal
     flavors:

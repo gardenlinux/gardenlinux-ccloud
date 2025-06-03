@@ -83,7 +83,8 @@ jobs:
       - name: Add additional semver tag
         run: |
           echo ${{ secrets.GITHUB_TOKEN }} | oras login -u ${{ github.repository_owner }} --password-stdin ghcr.io
-          oras tag ghcr.io/${{ github.repository }}:${{ inputs.version }}-${{ env.cname }}-${{ matrix.arch }} ${{ inputs.version }}.0-${{ env.cname }}-${{ matrix.arch }}
+          CNAME="${{ env.cname }}"
+          oras tag ghcr.io/${{ github.repository }}:${{ inputs.version }}-${{ env.cname }}-${{ matrix.arch }} ${{ inputs.version }}.0-${CNAME//_/-}-${{ matrix.arch }}
       - name: Upload oci manifest artifact
         uses: actions/upload-artifact@v4
         with:

@@ -33,3 +33,13 @@ targets:
         test: true
         test-platform: false
         publish: false
+  - name: vmware
+    category: hypervisor
+    flavors:
+      - features:
+          - orabos
+        arch: amd64
+        build: true
+        test: true
+        test-platform: false
+        publish: false

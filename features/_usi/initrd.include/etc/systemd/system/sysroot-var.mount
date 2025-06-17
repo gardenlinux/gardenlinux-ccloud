@@ -7,3 +7,4 @@
 What=/dev/disk/by-partlabel/VAR
 Where=/sysroot/var
 Type=ext4
+LazyUnmount=true

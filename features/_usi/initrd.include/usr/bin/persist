@@ -31,12 +31,13 @@ reboot-on-error 1
 EOF
 
 # START OF HUGE PAGES SETUP
+[ -f /sysroot/opt/persist/hugepages.env ] && . /sysroot/opt/persist/hugepages.env
 default_non_hugepages_pm=45  # this translates to 4.5%
+non_hugepages_pm="${NON_HUGEPAGES_PM:-$default_non_hugepages_pm}"
 
 mem_total_mb=$(($(sed -rn 's/MemTotal:\s+(.*) kB/\1/p' /proc/meminfo) / 1024 ))
 hugepagesize_mb=$(($(sed -rn 's/Hugepagesize:\s+(.*) kB/\1/p' /proc/meminfo) / 1024 ))
 
-non_hugepages_pm=$default_non_hugepages_pm
 non_hugepages_mb=$(( ($mem_total_mb * $non_hugepages_pm) / 1000 ))
 hugepages=$(( ($mem_total_mb - $non_hugepages_mb ) / $hugepagesize_mb ))
 

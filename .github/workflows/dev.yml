@@ -25,6 +25,6 @@ jobs:
 
   build:
     needs: [set_version]
-    uses: gardenlinux/gardenlinux/.github/workflows/build.yml@3c22fe8b663d7a198f8dd99061db37c5ad8a8438
+    uses: gardenlinux/gardenlinux/.github/workflows/build.yml@d9625e7e1dfbeb69952dd9efee7e7f21235f25c6
     with:
       version: ${{ needs.set_version.outputs.VERSION }}

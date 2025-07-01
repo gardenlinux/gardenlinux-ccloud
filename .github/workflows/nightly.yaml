@@ -19,14 +19,14 @@ jobs:
           submodules: recursive
   build:
     needs: [checkout]
-    uses: gardenlinux/gardenlinux/.github/workflows/build.yml@3c22fe8b663d7a198f8dd99061db37c5ad8a8438
+    uses: gardenlinux/gardenlinux/.github/workflows/build.yml@7285bfd2c7c0811bcdd6ed535dc4210481ac3888
     with:
       version: ${{ inputs.version || 'now' }}
   upload_oci:
     name: Run glcli to publish to OCI
     needs: [build]
     # use custom upload_oci.yml as we do not sign the images
-    # uses: gardenlinux/gardenlinux/.github/workflows/upload_oci.yml@3c22fe8b663d7a198f8dd99061db37c5ad8a8438
+    # uses: gardenlinux/gardenlinux/.github/workflows/upload_oci.yml@7285bfd2c7c0811bcdd6ed535dc4210481ac3888
     uses: ./.github/workflows/upload_oci.yml
     with:
       version: ${{ needs.build.outputs.version }}

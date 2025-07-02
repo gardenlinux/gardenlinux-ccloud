@@ -28,7 +28,8 @@ jobs:
     uses: gardenlinux/gardenlinux/.github/workflows/build.yml@d9625e7e1dfbeb69952dd9efee7e7f21235f25c6
     with:
       version: ${{ needs.set_version.outputs.VERSION }}
-      # to set target to "prod" we need proper KMS secrets
+      # to set target to "release" or "nightly" we need proper KMS secrets
+      # have a look at gardenlinux/.github/workflows/github.mjs 
       target: dev
       fail_fast: true
     # secrets:

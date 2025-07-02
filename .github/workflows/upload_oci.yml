@@ -26,70 +26,53 @@ jobs:
       fail-fast: false
       matrix: ${{ fromJson(needs.generate_matrix_publish.outputs.matrix) }}
     steps:
-      - uses: oras-project/setup-oras@v1
-      - run: oras version
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # pin@v4.1.1
         with:
           submodules: 'true'
+      - uses: oras-project/setup-oras@v1
+      - run: oras version
+      - name: Install python-gardenlinux-lib
+        uses: gardenlinux/python-gardenlinux-lib/.github/actions/setup@a7545af15d3a1fa96675b24807eace643483da96 # pin@0.8.0
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v3.9.1
+        with:
+          cosign-release: 'v2.4.1'
       # bin/garden-version reads and writes from and to ./VERSION which is read by ./build --resolve-cname
-      - name: set VERSION=${{ inputs.version }}
+      - name: Set flavor version reference
         run: |
-          bin/garden-version "${{ inputs.version }}" | tee VERSION
-          ls -la
-          ver=$(cat VERSION)
-          git update-index --assume-unchanged VERSION
-          git update-index --assume-unchanged gardenlinux # do not track gardenlinux submodule changes
-          cname="$(./build --resolve-cname ${{ matrix.flavor }}-${{ matrix.arch }})"
-          echo "cname=$cname" | tee -a "$GITHUB_ENV"
+          git rev-parse HEAD | cut -c1-8 | tee COMMIT
+          echo "${{ inputs.version }}" | tee VERSION
+      - name: Set CNAME
+        run: |
+          echo "CNAME=$(gl-features-parse --cname ${{ matrix.flavor }}-${{ matrix.arch }} cname)" | tee -a "$GITHUB_ENV"
       - uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # pin@v4.1.8
         with:
-          name: build-${{ env.cname }}
-      - name: Untar workflow artifact
+          name: build-${{ matrix.flavor }}-${{ matrix.arch }}
+      - name: Push using the glcli util
+        env:
+          GL_CLI_REGISTRY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GL_CLI_REGISTRY_USERNAME: ${{ github.repository_owner }}
         run: |
-          mkdir ${{ env.cname }}
-          tar -C ${{ env.cname }} -xzv < "${{ env.cname }}.tar.gz"
-      - name: Set up Python 3.12
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - name: Install glcli util
-        run: |
-          git clone --depth 1 --branch 0.6.4 https://github.com/gardenlinux/python-gardenlinux-cli.git
-          mv python-gardenlinux-cli /opt/glcli
-          pip install -r /opt/glcli/requirements.txt
-      - name: push using the glcli util
-        run: |
-          mkdir -p manifests
-          max_retries=3
-          retry_count=0
-          exit_code=0
-          until [ $retry_count -ge $max_retries ]; do
-            if output=$(GLOCI_REGISTRY_TOKEN=${{ secrets.GITHUB_TOKEN }} GLOCI_REGISTRY_USERNAME=${{ github.repository_owner }} python /opt/glcli/src/glcli.py push-manifest --dir ${{ env.cname }} --container ghcr.io/${{ github.repository }} --arch ${{ matrix.arch }} --version ${{ inputs.version }} --cname ${{ env.cname }} --cosign_file digest --manifest_file manifests/oci_manifest_entry_${{ env.cname }}.json 2>&1); then
-              echo "$output"
-              exit 0
-            elif echo "$output" | grep -q "Bad Gateway"; then
-              retry_count=$((retry_count+1))
-              exit_code=1
-              echo "Bad Gateway detected, retry $retry_count/$max_retries"
-              sleep 10
-            else
-              echo "Fatal error: $output"
-              exit $exit_code
-            fi
-          done
-          if [ $exit_code -ne 0 ]; then
-            echo "Failed after $max_retries retries"
-            exit 1
-          fi
+          mkdir "$CNAME" manifests
+
+          tar -C "$CNAME" -xzf "$CNAME.tar.gz"
+
+          gl-oci push-manifest \
+            --dir ${CNAME} \
+            --container "ghcr.io/${{ github.repository }}" \
+            --arch ${{ matrix.arch }} \
+            --version ${{ inputs.version }} \
+            --cname ${CNAME} \
+            --cosign_file digest \
+            --manifest_file "manifests/oci_manifest_entry_${CNAME}.json"
       - name: Add additional semver tag
         run: |
           echo ${{ secrets.GITHUB_TOKEN }} | oras login -u ${{ github.repository_owner }} --password-stdin ghcr.io
-          CNAME="${{ env.cname }}"
-          oras tag ghcr.io/${{ github.repository }}:${{ inputs.version }}-${{ env.cname }}-${{ matrix.arch }} ${{ inputs.version }}.0-${CNAME//_/-}-${{ matrix.arch }}
+          oras tag ghcr.io/${{ github.repository }}:${{ inputs.version }}-${CNAME}-${{ matrix.arch }} ${{ inputs.version }}.0-${CNAME//_/-}-${{ matrix.arch }}
       - name: Upload oci manifest artifact
         uses: actions/upload-artifact@v4
         with:
-          name: oci_manifest_entry_${{ env.cname }}.json
+          name: oci_manifest_entry_${{ env.CNAME }}.json
           path: manifests/
       - name: Output digest to be signed
         run: |
@@ -107,15 +90,8 @@ jobs:
       packages: write
       actions: write
     steps:
-      - name: Set up Python 3.12
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - name: Install glcli util
-        run: |
-          git clone --depth 1 --branch 0.6.2 https://github.com/gardenlinux/python-gardenlinux-cli.git
-          mv python-gardenlinux-cli /opt/glcli
-          pip install -r /opt/glcli/requirements.txt
+      - name: Install python-gardenlinux-lib
+        uses: gardenlinux/python-gardenlinux-lib/.github/actions/setup@a7545af15d3a1fa96675b24807eace643483da96 # pin@0.8.0
       - name: Download OCI manifest artifacts
         uses: actions/download-artifact@v4
         with:
@@ -123,8 +99,14 @@ jobs:
           pattern: oci_manifest_entry_*
           merge-multiple: true
       - name: Update index using glcli tool
+        env:
+          GL_CLI_REGISTRY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GL_CLI_REGISTRY_USERNAME: ${{ github.repository_owner }}
         run: |
-          GLOCI_REGISTRY_TOKEN=${{ secrets.GITHUB_TOKEN }} GLOCI_REGISTRY_USERNAME=${{ github.repository_owner }} python /opt/glcli/src/glcli.py update-index --container ghcr.io/${{ github.repository }} --version ${{ inputs.version }} --manifest_folder manifests
+          gl-oci update-index \
+            --container "ghcr.io/${{ github.repository }}" \
+            --version ${{ inputs.version }} \
+            --manifest_folder manifests
       - name: Delete temporary OCI manifest entry files
         uses: actions/github-script@v7
         with:

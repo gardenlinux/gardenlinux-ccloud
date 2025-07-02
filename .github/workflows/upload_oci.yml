@@ -7,7 +7,7 @@ on:
         default: today
 jobs:
   generate_matrix_publish:
-    uses: gardenlinux/gardenlinux/.github/workflows/generate_matrix.yml@3c22fe8b663d7a198f8dd99061db37c5ad8a8438
+    uses: gardenlinux/gardenlinux/.github/workflows/generate_matrix.yml@d9625e7e1dfbeb69952dd9efee7e7f21235f25c6
     with:
       flags: '--exclude "bare-*" --no-arch --json-by-arch --build --test'
   upload_gl_artifacts_to_oci:

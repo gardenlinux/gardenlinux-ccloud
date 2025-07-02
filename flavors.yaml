@@ -33,3 +33,13 @@ targets:
         test: true
         test-platform: false
         publish: false
+  - name: bare
+    category: container
+    flavors:
+      - features:
+          - libc
+        arch: amd64
+        build: true
+        test: true
+        test-platform: false
+        publish: false

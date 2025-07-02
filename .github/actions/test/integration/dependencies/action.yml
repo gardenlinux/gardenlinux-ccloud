@@ -8,7 +8,15 @@ runs:
       run: |
         sudo apt-get update
         sudo apt-get install -y \
-          parted squashfs-tools qemu-kvm libvirt-daemon-system libvirt-clients virtinst bridge-utils ovmf
+          parted \
+          squashfs-tools \
+          qemu-kvm \
+          genisoimage \
+          libvirt-daemon-system \
+          libvirt-clients \
+          virtinst \
+          bridge-utils \
+          ovmf
     - name: oras
       uses: oras-project/setup-oras@v1
       with:
@@ -17,6 +25,6 @@ runs:
       shell: bash
       run: |
         BUTANE_VERSION="0.24.0"
-        curl -LO "https://github.com/coreos/butane/releases/download/v${BUTANE_VERSION}/butane-${BUTANE_VERSION}-linux-amd64"
-        chmod +x "butane-${BUTANE_VERSION}-linux-amd64"
-        sudo mv "butane-${BUTANE_VERSION}-linux-amd64" /usr/local/bin/butane
+        curl -LO "https://github.com/coreos/butane/releases/download/v${BUTANE_VERSION}/butane-x86_64-unknown-linux-gnu"
+        chmod +x "butane-x86_64-unknown-linux-gnu"
+        sudo mv "butane-x86_64-unknown-linux-gnu" /usr/local/bin/butane

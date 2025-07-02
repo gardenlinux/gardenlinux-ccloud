@@ -1,0 +1,22 @@
+name: dependencies
+description: Install Dependencies for Integration Test
+runs:
+  using: "composite"
+  steps:
+    - name: apt
+      shell: bash
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          parted squashfs-tools qemu-kvm libvirt-daemon-system libvirt-clients virtinst bridge-utils ovmf
+    - name: oras
+      uses: oras-project/setup-oras@v1
+      with:
+        version: 1.2.2
+    - name: butane
+      shell: bash
+      run: |
+        BUTANE_VERSION="0.24.0"
+        curl -LO "https://github.com/coreos/butane/releases/download/v${BUTANE_VERSION}/butane-${BUTANE_VERSION}-linux-amd64"
+        chmod +x "butane-${BUTANE_VERSION}-linux-amd64"
+        sudo mv "butane-${BUTANE_VERSION}-linux-amd64" /usr/local/bin/butane

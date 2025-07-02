@@ -1,0 +1,16 @@
+name: test hypervisor capabilities
+on:
+  push:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install Dependencies
+        uses: ./.github/actions/test/integration/dependencies
+      - name: Build
+        uses: ./.github/actions/test/integration/build
+        with:
+          image_tag: 1919.0.0-metal-sci-usi-amd64-1919.0-16c70177-amd64

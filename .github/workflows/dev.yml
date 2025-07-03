@@ -22,16 +22,16 @@ jobs:
       - name: use VERSION file to support dev build on rel-branch
         id: version
         run: echo "VERSION=$(cat VERSION)" >> $GITHUB_OUTPUT
-
   build:
     needs: [set_version]
-    uses: gardenlinux/gardenlinux/.github/workflows/build.yml@d9625e7e1dfbeb69952dd9efee7e7f21235f25c6
+    uses: gardenlinux/gardenlinux/.github/workflows/build.yml@27b8bddd244614718c20cbf419d4025a57114e23
     with:
       version: ${{ needs.set_version.outputs.VERSION }}
       # to set target to "release" or "nightly" we need proper KMS secrets
       # have a look at gardenlinux/.github/workflows/github.mjs 
       target: dev
       fail_fast: true
+      platform_test_build: false
     # secrets:
       # aws_region: ${{ secrets.AWS_REGION }}
       # aws_kms_role: ${{ secrets.KMS_SIGNING_IAM_ROLE }}

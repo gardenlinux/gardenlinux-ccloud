@@ -25,7 +25,7 @@ jobs:
 
   build:
     needs: [set_version]
-    uses: gardenlinux/gardenlinux/.github/workflows/build.yml@d9625e7e1dfbeb69952dd9efee7e7f21235f25c6
+    uses: gardenlinux/gardenlinux/.github/workflows/build.yml@46350eeb124ae0dd6717d1acb876d55bb1a6f293
     with:
       version: ${{ needs.set_version.outputs.VERSION }}
       # to set target to "release" or "nightly" we need proper KMS secrets

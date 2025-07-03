@@ -81,7 +81,7 @@ runs:
         cat <<EOF | sudo tee "$RUNNER_TEMP/esp/loader/entries/gardenlinux.conf" > /dev/null
         title   Garden Linux (UKI)
         linux   /EFI/BOOT/gardenlinux.efi
-        options audit=0 console=ttyS0 ignition.firstboot=1 ignition.platform.id=qemu
+        options systemd.gpt_auto=0 audit=0 console=ttyS0 ignition.firstboot=1 ignition.platform.id=qemu
         EOF
 
         sudo umount "$RUNNER_TEMP/esp"
@@ -95,8 +95,9 @@ runs:
     - name: Generate ignition
       shell: bash
       run: |
-        ssh-keygen -t ed25519 -f "ssh_host_ed25519_key" -N "" -C "user" -q
-        SSH_KEY=$(cat "ssh_host_ed25519_key.pub")
+        ssh-keygen -t ed25519 -f "/opt/ssh_host_ed25519_key" -N "" -C "user" -q
+        chmod 600 /opt/ssh_host_ed25519_key
+        SSH_KEY=$(cat /opt/ssh_host_ed25519_key.pub)
         echo "SSH_KEY=$SSH_KEY" >> $GITHUB_ENV
         sed -i "s|SSH_KEY_GOES_HERE|$SSH_KEY|g" ./.github/actions/test/integration/build/dev-user-butane.yaml
         PASSWORD=$(openssl passwd "password")
@@ -116,10 +117,10 @@ runs:
         sed -i "s|PASSWORD_GOES_HERE|$PASSWORD|g" ./.github/actions/test/integration/build/user-data
         genisoimage -output /opt/ubuntu-cloud-init-ds.iso -volid cidata -joliet -rock ./.github/actions/test/integration/build/meta-data ./.github/actions/test/integration/build/user-data
 
-    - name: Upload artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: gardenlinux-ccloud-${{ inputs.image_tag }}
-        path: /opt/${{ inputs.image_tag }}.*
-        retention-days: 1
-        overwrite: true
+    # - name: Upload artifacts
+    #   uses: actions/upload-artifact@v4
+    #   with:
+    #     name: gardenlinux-ccloud-${{ inputs.image_tag }}
+    #     path: /opt/${{ inputs.image_tag }}.*
+    #     retention-days: 1
+    #     overwrite: true

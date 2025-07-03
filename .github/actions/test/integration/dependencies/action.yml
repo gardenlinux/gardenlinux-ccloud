@@ -17,6 +17,13 @@ runs:
           virtinst \
           bridge-utils \
           ovmf
+    # Required for storing the ignition file in /var/lib/libvirt/images
+    - name: Disable libvirt qemu security driver
+      shell: bash
+      run: |
+        sudo sed -i '/^[#[:space:]]*security_driver[[:space:]]*=/d' /etc/libvirt/qemu.conf
+        echo 'security_driver = "none"' | sudo tee -a /etc/libvirt/qemu.conf
+        sudo systemctl restart libvirtd
     - name: oras
       uses: oras-project/setup-oras@v1
       with:

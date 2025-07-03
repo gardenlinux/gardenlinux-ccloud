@@ -1,0 +1,6 @@
+name: test
+description: Execute Integration Tests for Hypervisor Capabilities
+runs:
+  using: "composite"
+  steps:
+    - name: Configure the default libvirt network

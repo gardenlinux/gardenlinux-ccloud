@@ -50,3 +50,9 @@ storage:
     contents:
       inline: |
         NON_HUGEPAGES_PM=1000
+  # pull the image from GHCR instead of keppel
+  - path: /opt/persist/gl-oci.conf
+    mode: 0644
+    contents:
+      inline: |
+        OCI_REPO=ghcr.io/gardenlinux/gardenlinux-ccloud

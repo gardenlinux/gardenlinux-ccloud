@@ -3,7 +3,7 @@ on:
   push:
 
 jobs:
-  build:
+  test:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -14,3 +14,5 @@ jobs:
         uses: ./.github/actions/test/integration/build
         with:
           image_tag: 1919.0.0-metal-sci-usi-amd64-1919.0-16c70177-amd64
+      - name: Setup
+        uses: ./.github/actions/test/integration/setup

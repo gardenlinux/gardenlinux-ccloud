@@ -11,10 +11,12 @@ runs:
         sudo virsh net-define ./.github/actions/test/integration/setup/virbr-hv.xml
         sudo virsh net-start default
         sudo virsh net-autostart default
+
     - name: Copy ignition file
       shell: bash
       run: |
         sudo cp "/opt/${TAG}.ign" /var/lib/libvirt/images/hv.ign
+
     - name: Create HyperVisor 1
       shell: bash
       run: |
@@ -25,6 +27,7 @@ runs:
 
         sudo virsh define ./.github/actions/test/integration/setup/hv1.xml
         sudo virsh start HV1
+
     - name: Create HyperVisor 2
       shell: bash
       run: |
@@ -35,6 +38,7 @@ runs:
 
         sudo virsh define ./.github/actions/test/integration/setup/hv2.xml
         sudo virsh start HV2
+
     - name: Wait for HyperVisors to be ready
       shell: bash
       run: |
@@ -47,13 +51,14 @@ runs:
           local VM_NAME="$1"
 
           for ((i=1; i<=MAX_ITER; i++)); do
-            local MAC=$(sudo virsh domiflist "$VM_NAME" | awk '/network/ {print $5}')
-            local IP=$(sudo virsh net-dhcp-leases default | grep "$MAC" | sort --reverse | head -n 1 | awk '{print $5}' | cut -d'/' -f1)
-            if [ -n "$IP" ] && ssh $SSH_OPTS "$USER@$IP" 'exit' 2>/dev/null; then
+            local IP=$(sudo virsh domifaddr "$VM_NAME" | awk '/ipv4/ {print $4}' | cut -d'/' -f1)
+            if [ -z "$IP" ]; then
+              echo "No IP address found for $VM_NAME. Retrying..."
+            elif ssh $SSH_OPTS "$USER@$IP" 'exit' 2>/dev/null; then
               echo "$VM_NAME is up at IP: $IP"
               scp $SSH_OPTS ./.github/actions/test/integration/setup/virbr-vm.xml "$USER@$IP:/opt/virbr-vm.xml"
               scp $SSH_OPTS /opt/ssh_host_ed25519_key "$USER@$IP:/opt/ssh_host_ed25519_key"
-              return 0
+              break
             fi
             if (( i == MAX_ITER )); then
               echo "Timeout waiting for $VM_NAME to respond to SSH."
@@ -67,6 +72,7 @@ runs:
 
         wait_for_ssh HV1
         wait_for_ssh HV2
+
     - name: Configure SSH between HyperVisors
       uses: appleboy/ssh-action@v1
       with:
@@ -74,7 +80,6 @@ runs:
         username: root
         key_path: /opt/ssh_host_ed25519_key
         script: |
-          # Enable passwordless SSH between HyperVisors
           chmod 700 /root/.ssh
           echo "" > /root/.ssh/config
           echo "Host 192.168.122.*" >> /root/.ssh/config
@@ -85,6 +90,7 @@ runs:
           echo "    User root" >> /root/.ssh/config
           chmod 600 /root/.ssh/config
           chmod 600 /opt/ssh_host_ed25519_key
+
     - name: Set up network and storage configuration on HyperVisors
       uses: appleboy/ssh-action@v1
       with:
@@ -92,23 +98,7 @@ runs:
         username: root
         key_path: /opt/ssh_host_ed25519_key
         script: |
-          # Startup is somewhat flaky at the first nesting layer, so wait explicitly
           systemctl start libvirtd
-          MAX_ITER=30
-          for ((i=1; i<=MAX_ITER; i++)); do
-            if systemctl is-active --quiet libvirtd; then
-              echo "libvirt is ready."
-              break
-            fi
-            if (( i == MAX_ITER )); then
-              echo "Timeout waiting for libvirt to be ready."
-              systemctl status libvirtd
-              journalctl -u libvirtd --no-pager
-              exit 1
-            fi
-            echo "Waiting for libvirt to be ready... ($i/$MAX_ITER)"
-            sleep 10
-          done
 
           virsh pool-destroy default || true
           virsh pool-undefine default || true

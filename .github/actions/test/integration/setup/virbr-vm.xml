@@ -6,10 +6,10 @@
         </nat>
     </forward>
     <bridge name='virbr0' stp='on' delay='0' />
-    <mac address='52:54:00:bb:bb:bb' />
     <ip address='192.168.222.1' netmask='255.255.255.0'>
         <dhcp>
             <range start='192.168.222.100' end='192.168.222.254' />
+            <host mac='52:54:00:00:00:01' ip='192.168.222.2' name='vm' />
         </dhcp>
     </ip>
 </network>

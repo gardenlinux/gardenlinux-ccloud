@@ -1,6 +1,19 @@
 name: test hypervisor capabilities
 on:
   push:
+    branches:
+      - ci-test-virtualization
+  workflow_run:
+    workflows:
+      - nightly
+    types:
+      - completed
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "Image tag to test (must be usi-sci)"
+        type: string
+        default: ""
 
 jobs:
   test:
@@ -10,10 +23,17 @@ jobs:
         uses: actions/checkout@v4
       - name: Install Dependencies
         uses: ./.github/actions/test/integration/dependencies
+      - name: Obtain newest Tag from GHCR
+        id: fetch_tag
+        if: ${{ inputs.image_tag == '' || github.event_name == 'workflow_run' || github.event_name == 'push' }}
+        run: |
+          latest_tag=$(oras repo tags ghcr.io/gardenlinux/gardenlinux-ccloud | grep 'sci_usi' | sort -r | head -n 1)
+          echo $latest_tag
+          echo "latest_tag=$latest_tag" >> $GITHUB_ENV
       - name: Build
         uses: ./.github/actions/test/integration/build
         with:
-          image_tag: 1919.0.0-metal-sci-usi-amd64-1919.0-16c70177-amd64
+          image_tag: ${{ env.latest_tag || inputs.image_tag }}
       - name: Setup
         uses: ./.github/actions/test/integration/setup
       - name: Test

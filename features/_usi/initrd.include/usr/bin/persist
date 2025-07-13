@@ -30,30 +30,30 @@ timeout 0
 reboot-on-error 1
 EOF
 
-# START OF HUGE PAGES SETUP
 [ -f /sysroot/opt/persist/hugepages.env ] && . /sysroot/opt/persist/hugepages.env
-default_non_hugepages_pm=45  # this translates to 4.5%
-non_hugepages_pm="${NON_HUGEPAGES_PM:-$default_non_hugepages_pm}"
+ENABLE_HUGEPAGE_SETUP="${ENABLE_HUGEPAGE_SETUP:-true}"
 
-mem_total_mb=$(($(sed -rn 's/MemTotal:\s+(.*) kB/\1/p' /proc/meminfo) / 1024 ))
-hugepagesize_mb=$(($(sed -rn 's/Hugepagesize:\s+(.*) kB/\1/p' /proc/meminfo) / 1024 ))
+# configure hugepages
+if [ "$ENABLE_HUGEPAGE_SETUP" = "true" ]; then
+  default_non_hugepages_pm=45  # this translates to 4.5%
+  non_hugepages_pm="${NON_HUGEPAGES_PM:-$default_non_hugepages_pm}"
 
-non_hugepages_mb=$(( ($mem_total_mb * $non_hugepages_pm) / 1000 ))
-hugepages=$(( ($mem_total_mb - $non_hugepages_mb ) / $hugepagesize_mb ))
+  mem_total_mb=$(($(sed -rn 's/MemTotal:\s+(.*) kB/\1/p' /proc/meminfo) / 1024 ))
+  hugepagesize_mb=$(($(sed -rn 's/Hugepagesize:\s+(.*) kB/\1/p' /proc/meminfo) / 1024 ))
 
-max_watermark_scale_factor=$(($non_hugepages_mb * 500 / $mem_total_mb))
-watermark_scale_factor=$(</proc/sys/vm/watermark_scale_factor)
+  non_hugepages_mb=$(( ($mem_total_mb * $non_hugepages_pm) / 1000 ))
+  hugepages=$(( ($mem_total_mb - $non_hugepages_mb ) / $hugepagesize_mb ))
 
-if [ $max_watermark_scale_factor -lt "$watermark_scale_factor" ]; then
-  # keep it here for the initrd
-  echo "vm.watermark_scale_factor = $max_watermark_scale_factor" > /sysroot/etc/sysctl.d/99-watermark-hugepages.conf
+  max_watermark_scale_factor=$(($non_hugepages_mb * 500 / $mem_total_mb))
+  watermark_scale_factor=$(</proc/sys/vm/watermark_scale_factor)
+
+  if [ $max_watermark_scale_factor -lt "$watermark_scale_factor" ]; then
+    # keep it here for the initrd
+    echo "vm.watermark_scale_factor = $max_watermark_scale_factor" > /sysroot/etc/sysctl.d/99-watermark-hugepages.conf
+  fi
+
+  echo "CMDLINE_LINUX=\"\$CMDLINE_LINUX hugepagesz=2MB hugepages=$hugepages\"" > /sysroot/etc/kernel/cmdline.d/99-hugepages.cfg
 fi
-
-echo "CMDLINE_LINUX=\"\$CMDLINE_LINUX hugepagesz=2MB hugepages=$hugepages\"" > /sysroot/etc/kernel/cmdline.d/99-hugepages.cfg
-
-# update the kernel cmdline
-# chroot /sysroot /usr/local/sbin/update-kernel-cmdline
-# END OF HUGE PAGES SETUP
 
 mkdir -p "$esp_dir/EFI/Linux"
 
@@ -79,12 +79,19 @@ OCI_TAG="$GARDENLINUX_VERSION-$GARDENLINUX_CNAME-$GARDENLINUX_COMMIT_ID-$OCI_ARC
 UKI_SHA=$(oras manifest fetch "$OCI_REPO:${OCI_TAG}" | jq -r '.layers[] | select(.mediaType=="application/io.gardenlinux.uki") | .digest')
 oras blob fetch "$OCI_REPO@$UKI_SHA" -o "$esp_dir/EFI/Linux/uki.efi"
 
-# update the kernel cmdline in the uki
-# TODO: when using the USI tool to perform the in place update, should the cmdline of the new image also be changed?
-# n.b. secureboot makes all this impossible!
-cmdline=$(objcopy --dump-section .cmdline=/dev/stdout /sysroot/efi/EFI/Linux/uki.efi | sed -r 's/x{8,}//')
-echo "$cmdline hugepagesz=2MB hugepages=$hugepages" > /tmp/cmdlinef
-objcopy --update-section .cmdline=/tmp/cmdlinef /sysroot/efi/EFI/Linux/uki.efi
+if [ "$ENABLE_HUGEPAGE_SETUP" = "true" ]; then
+  # update the kernel cmdline in the uki
+  # TODO: when using the USI tool to perform the in place update, should the cmdline of the new image also be changed?
+  # n.b. secureboot makes all this impossible!
+  cmdline=$(objcopy --dump-section .cmdline=/dev/stdout /sysroot/efi/EFI/Linux/uki.efi)
+  # verify that cmdline is not longer than 4095 bytes
+  if [ ${#cmdline} -gt 4095 ]; then
+    echo "Error: cmdline is longer than 4095 bytes, cannot update uki"
+    exit 1
+  fi
+  echo "$cmdline hugepagesz=2MB hugepages=$hugepages" > /tmp/cmdlinef
+  objcopy --update-section .cmdline=/tmp/cmdlinef /sysroot/efi/EFI/Linux/uki.efi
+fi
 
 # Network config generation
 if [[ -x /sysroot/opt/persist/network_up.sh ]]; then

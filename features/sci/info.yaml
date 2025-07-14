@@ -1,9 +1,6 @@
-description: "SCI Baremetal OS"
+description: "SCI Baremetal OS (virtual host feature)"
 type: element
 features:
   include:
-    - _rescue
-    - _slim
-    - gardener
-    - sssd
+    - scibase
     - vhost

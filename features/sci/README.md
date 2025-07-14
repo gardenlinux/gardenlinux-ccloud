@@ -3,12 +3,12 @@
 ### Description
 
 <website-feature>
-This platform feature creates an artifact for SCI Baremetal OS. Which is exposing a KVM hypervisor via kubernetes.
+This platform feature creates an artifact for SCI Baremetal OS. Which is exposing a KVM hypervisor.
 </website-feature>
 
 ### Features
 
-This feature creates a baremetal compatible image artifact as a `.qcow2` file.
+This feature creates a image including the hypervisor.
 
 ### Unit testing
 
@@ -16,7 +16,7 @@ This feature creates a baremetal compatible image artifact as a `.qcow2` file.
 
 |||
 |---|---|
-|type|platform|
-|artifact|`.raw`,`.qcow2`|
-|included_features|`gardener`,`vhost`|
+|type|element|
+|artifact|None|
+|included_features|`scibase`,`vhost`|
 |excluded_features|None|

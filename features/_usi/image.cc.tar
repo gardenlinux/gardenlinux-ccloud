@@ -94,7 +94,7 @@ read -r _ cmdline < "$rootfs/etc/kernel/cmdline"
 	--linux "$kernel" \
 	--initrd "$initrd" \
 	--uname "${kernel#*-}" \
-	--cmdline "$cmdline xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" \
+	--cmdline "$cmdline" \
 	--os-release "@$rootfs/etc/os-release" \
 	--output "$uki"
 

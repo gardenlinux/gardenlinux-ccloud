@@ -1,0 +1,8 @@
+description: "SCI Baremetal OS (base feature)"
+type: element
+features:
+  include:
+    - _rescue
+    - _slim
+    - gardener
+    - sssd

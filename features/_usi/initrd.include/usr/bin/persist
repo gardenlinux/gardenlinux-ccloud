@@ -83,12 +83,7 @@ if [ "$ENABLE_HUGEPAGE_SETUP" = "true" ]; then
   # update the kernel cmdline in the uki
   # TODO: when using the USI tool to perform the in place update, should the cmdline of the new image also be changed?
   # n.b. secureboot makes all this impossible!
-  cmdline=$(objcopy --dump-section .cmdline=/dev/stdout /sysroot/efi/EFI/Linux/uki.efi)
-  # verify that cmdline is not longer than 4095 bytes
-  if [ ${#cmdline} -gt 4095 ]; then
-    echo "Error: cmdline is longer than 4095 bytes, cannot update uki"
-    exit 1
-  fi
+  cmdline=$(objcopy --dump-section .cmdline=/dev/stdout /sysroot/efi/EFI/Linux/uki.efi | sed -r 's/x{8,}//')
   echo "$cmdline hugepagesz=2MB hugepages=$hugepages" > /tmp/cmdlinef
   objcopy --update-section .cmdline=/tmp/cmdlinef /sysroot/efi/EFI/Linux/uki.efi
 fi

@@ -1,0 +1,126 @@
+name: build
+description: Build Bootable Virtual Machine Image
+inputs:
+  image_tag:
+    description: "Image tag to use for the build"
+    required: true
+runs:
+  using: "composite"
+  steps:
+    # TODO https://github.com/actions/cache
+    - name: Set ENV
+      shell: bash
+      env:
+        REPO: ghcr.io/gardenlinux/gardenlinux-ccloud
+        TAG: ${{ inputs.image_tag }}
+        ESP_SIZE: 4 # GiB
+        DISK_SIZE: 8 # GiB
+      run: |
+        echo "REPO=$REPO" >> $GITHUB_ENV
+        echo "TAG=$TAG" >> $GITHUB_ENV
+        echo "ESP_SIZE=$ESP_SIZE" >> $GITHUB_ENV
+        echo "DISK_SIZE=$DISK_SIZE" >> $GITHUB_ENV
+
+    - name: Pull ORAS artifacts
+      shell: bash
+      run: |
+        LAYERS=$(oras manifest fetch "$REPO:$TAG" | jq -r '.layers[]')
+        UKI_SHA=$(echo $LAYERS | jq -r 'select(.mediaType=="application/io.gardenlinux.uki") | .digest')
+        TAR_SHA=$(echo "$LAYERS" | jq -r 'select(.mediaType=="application/io.gardenlinux.image.archive.format.tar")' | jq -rs 'sort_by(.size) | .[0].digest')
+
+        oras blob fetch "$REPO@$UKI_SHA" -o "$RUNNER_TEMP/$TAG.uki"
+        oras blob fetch "$REPO@$TAR_SHA" -o "$RUNNER_TEMP/$TAG.tar" # wasteful, we only systemd-boot
+
+    - name: Extract systemd-boot
+      shell: bash
+      run: |
+        tar -xf "$RUNNER_TEMP/$TAG.tar" --no-same-owner --strip-components=5 -C "$RUNNER_TEMP" usr/lib/systemd/boot/efi/systemd-bootx64.efi
+
+    - name: Set up a raw disk image
+      shell: bash
+      run: |
+        ESP_END="${ESP_SIZE}GiB"
+        DISK_IMG="${RUNNER_TEMP}/${TAG}.img"
+        echo "DISK_IMG=$DISK_IMG" >> $GITHUB_ENV
+
+        qemu-img create "$DISK_IMG" "${DISK_SIZE}G"
+        parted "$DISK_IMG" --script mklabel gpt
+        parted "$DISK_IMG" --script mkpart ESP fat32 1MiB "$ESP_END"
+        parted "$DISK_IMG" --script set 1 esp on
+        parted "$DISK_IMG" --script mkpart var ext4 "$ESP_END" 100%
+
+        parted "$DISK_IMG" --script name 1 ESP
+        parted "$DISK_IMG" --script name 2 VAR
+
+        LOOPDEV=$(sudo losetup --show -fP "$DISK_IMG")
+        echo "LOOPDEV=$LOOPDEV" >> $GITHUB_ENV
+        ESP_PART="${LOOPDEV}p1"
+        echo "ESP_PART=$ESP_PART" >> $GITHUB_ENV
+        VAR_PART="${LOOPDEV}p2"
+
+        sudo mkfs.vfat -F32 "$ESP_PART"
+        sudo mkfs.ext4 "$VAR_PART" -L VAR
+
+    - name: Populate the ESP partition
+      shell: bash
+      run: |
+        mkdir -p "$RUNNER_TEMP/esp"
+        sudo mount "$ESP_PART" "$RUNNER_TEMP/esp"
+
+        sudo mkdir -p "$RUNNER_TEMP/esp/EFI/BOOT"
+        sudo cp "$RUNNER_TEMP/systemd-bootx64.efi" "$RUNNER_TEMP/esp/EFI/BOOT/BOOTX64.EFI"
+        sudo cp "$RUNNER_TEMP/$TAG.uki" "$RUNNER_TEMP/esp/EFI/BOOT/gardenlinux.efi"
+
+        sudo mkdir -p "$RUNNER_TEMP/esp/loader/entries"
+
+        cat <<EOF | sudo tee "$RUNNER_TEMP/esp/loader/loader.conf" > /dev/null
+        default      gardenlinux
+        timeout      3
+        console-mode max
+        EOF
+        cat <<EOF | sudo tee "$RUNNER_TEMP/esp/loader/entries/gardenlinux.conf" > /dev/null
+        title   Garden Linux (UKI)
+        linux   /EFI/BOOT/gardenlinux.efi
+        options systemd.gpt_auto=0 audit=0 console=ttyS0 ignition.firstboot=1 ignition.platform.id=qemu
+        EOF
+
+        sudo umount "$RUNNER_TEMP/esp"
+        sudo losetup -d "$LOOPDEV"
+
+    - name: Convert to QCOW2
+      shell: bash
+      run: |
+        qemu-img convert -O qcow2 "$DISK_IMG" "/opt/${TAG}.qcow2"
+
+    - name: Generate ignition
+      shell: bash
+      run: |
+        ssh-keygen -t ed25519 -f "/opt/ssh_host_ed25519_key" -N "" -C "user" -q
+        chmod 600 /opt/ssh_host_ed25519_key
+        SSH_KEY=$(cat /opt/ssh_host_ed25519_key.pub)
+        echo "SSH_KEY=$SSH_KEY" >> $GITHUB_ENV
+        sed -i "s|SSH_KEY_GOES_HERE|$SSH_KEY|g" ./.github/actions/test/integration/build/dev-user-butane.yaml
+        PASSWORD=$(openssl passwd "password")
+        echo "PASSWORD=$PASSWORD" >> $GITHUB_ENV
+        sed -i "s|PASSWORD_GOES_HERE|$PASSWORD|g" ./.github/actions/test/integration/build/dev-user-butane.yaml
+        butane --pretty --strict ./.github/actions/test/integration/build/dev-user-butane.yaml > "/opt/${TAG}.ign"
+
+    - name: Download ubuntu cloud image
+      shell: bash
+      run: |
+        wget -q "https://cloud-images.ubuntu.com/minimal/releases/noble/release/ubuntu-24.04-minimal-cloudimg-amd64.img" -O /opt/ubuntu.qcow2
+
+    - name: Generate ubuntu cloud-init
+      shell: bash
+      run: |
+        sed -i "s|SSH_KEY_GOES_HERE|$SSH_KEY|g" ./.github/actions/test/integration/build/user-data
+        sed -i "s|PASSWORD_GOES_HERE|$PASSWORD|g" ./.github/actions/test/integration/build/user-data
+        genisoimage -output /opt/ubuntu-cloud-init-ds.iso -volid cidata -joliet -rock ./.github/actions/test/integration/build/meta-data ./.github/actions/test/integration/build/user-data
+
+    # - name: Upload artifacts
+    #   uses: actions/upload-artifact@v4
+    #   with:
+    #     name: gardenlinux-ccloud-${{ inputs.image_tag }}
+    #     path: /opt/${{ inputs.image_tag }}.*
+    #     retention-days: 1
+    #     overwrite: true

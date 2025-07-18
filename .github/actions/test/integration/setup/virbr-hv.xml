@@ -1,0 +1,16 @@
+<network>
+    <name>default</name>
+    <forward mode='nat'>
+        <nat>
+            <port start='1024' end='65535' />
+        </nat>
+    </forward>
+    <bridge name='virbr0' stp='on' delay='0' />
+    <ip address='192.168.122.1' netmask='255.255.255.0'>
+        <dhcp>
+            <range start='192.168.122.100' end='192.168.122.254' />
+            <host mac='52:54:00:12:34:56' ip='192.168.122.2' name='hv1' />
+            <host mac='52:54:00:65:43:21' ip='192.168.122.3' name='hv2' />
+        </dhcp>
+    </ip>
+</network>

@@ -1,0 +1,40 @@
+name: dependencies
+description: Install Dependencies for Integration Test
+runs:
+  using: "composite"
+  steps:
+    - name: apt
+      shell: bash
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          parted \
+          squashfs-tools \
+          qemu-kvm \
+          genisoimage \
+          libvirt-daemon-system \
+          libvirt-clients \
+          virtinst \
+          bridge-utils \
+          ovmf
+
+    # Required for storing the ignition file in /var/lib/libvirt/images
+    - name: Disable libvirt qemu security driver
+      shell: bash
+      run: |
+        sudo sed -i '/^[#[:space:]]*security_driver[[:space:]]*=/d' /etc/libvirt/qemu.conf
+        echo 'security_driver = "none"' | sudo tee -a /etc/libvirt/qemu.conf
+        sudo systemctl restart libvirtd
+
+    - name: oras
+      uses: oras-project/setup-oras@v1
+      with:
+        version: 1.2.2
+
+    - name: butane
+      shell: bash
+      run: |
+        BUTANE_VERSION="0.24.0"
+        curl -LO "https://github.com/coreos/butane/releases/download/v${BUTANE_VERSION}/butane-x86_64-unknown-linux-gnu"
+        chmod +x "butane-x86_64-unknown-linux-gnu"
+        sudo mv "butane-x86_64-unknown-linux-gnu" /usr/local/bin/butane

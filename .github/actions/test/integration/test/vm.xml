@@ -1,0 +1,39 @@
+<domain type='kvm' xmlns:qemu='http://libvirt.org/schemas/domain/qemu/1.0'>
+    <name>VM</name>
+    <memory unit='GiB'>2</memory>
+    <vcpu>2</vcpu>
+    <os firmware='efi'>
+        <type arch='x86_64'>hvm</type>
+        <loader readonly='yes' type='pflash'>/usr/share/OVMF/OVMF_CODE_4M.fd</loader>
+        <boot dev='hd' />
+    </os>
+    <features>
+        <acpi />
+    </features>
+    <cpu mode='host-passthrough' check='none' migratable='on' />
+    <devices>
+        <disk type='file' device='disk'>
+            <driver name='qemu' type='qcow2' />
+            <source file='/var/lib/libvirt/images/ubuntu.qcow2' />
+            <target dev='hda' bus='ide' />
+        </disk>
+        <disk type='file' device='cdrom'>
+            <driver name='qemu' type='raw' />
+            <source file='/var/lib/libvirt/images/ubuntu-cloud-init-ds.iso' />
+            <target dev='hdb' bus='ide' />
+            <readonly />
+        </disk>
+        <interface type='network'>
+            <mac address='52:54:00:00:00:01' />
+            <source network='default' />
+            <model type='virtio' />
+        </interface>
+        <console type='pty'>
+            <target type='serial' port='0' />
+        </console>
+        <serial type='file'>
+            <source path='/var/log/VM.log' />
+            <target port='0' />
+        </serial>
+    </devices>
+</domain>

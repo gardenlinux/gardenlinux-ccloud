@@ -18,27 +18,26 @@ jobs:
     defaults:
       run:
         shell: bash
-    env:
-      CNAME: ''
     permissions:
       id-token: write
       packages: write
     strategy:
+      max-parallel: 5
       fail-fast: false
       matrix: ${{ fromJson(needs.generate_matrix_publish.outputs.matrix) }}
-      max-parallel: 8
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # pin@v4.1.1
         with:
-          submodules: true
+          submodules: 'true'
       - uses: oras-project/setup-oras@v1
       - run: oras version
       - name: Install python-gardenlinux-lib
-        uses: gardenlinux/python-gardenlinux-lib/.github/actions/setup@8901e3679feb077060f4b33769efe071133f3199 # pin@0.8.7
+        uses: gardenlinux/python-gardenlinux-lib/.github/actions/setup@a7545af15d3a1fa96675b24807eace643483da96 # pin@0.8.0
       - name: Install cosign
         uses: sigstore/cosign-installer@v3.9.1
         with:
           cosign-release: 'v2.4.1'
+      # bin/garden-version reads and writes from and to ./VERSION which is read by ./build --resolve-cname
       - name: Set flavor version reference
         run: |
           git rev-parse HEAD | cut -c1-8 | tee COMMIT
@@ -54,29 +53,30 @@ jobs:
           GL_CLI_REGISTRY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GL_CLI_REGISTRY_USERNAME: ${{ github.repository_owner }}
         run: |
-          mkdir "$CNAME"
+          mkdir "$CNAME" manifests
 
           tar -C "$CNAME" -xzf "$CNAME.tar.gz"
 
           gl-oci push-manifest \
-            --dir "${CNAME}" \
+            --dir ${CNAME} \
             --container "ghcr.io/${{ github.repository }}" \
             --arch ${{ matrix.arch }} \
             --version ${{ inputs.version }} \
-            --cname "${CNAME}" \
-            --cosign_file digest.txt \
-            --manifest_file "oci_manifest_entry_${CNAME}.json"
+            --cname ${CNAME} \
+            --cosign_file digest \
+            --manifest_file "manifests/oci_manifest_entry_${CNAME}.json"
       - name: Add additional semver tag
         run: |
           echo ${{ secrets.GITHUB_TOKEN }} | oras login -u ${{ github.repository_owner }} --password-stdin ghcr.io
           oras tag ghcr.io/${{ github.repository }}:${{ inputs.version }}-${CNAME}-${{ matrix.arch }} ${{ inputs.version }}.0-${CNAME//_/-}-${{ matrix.arch }}
-      - uses: actions/cache/save@5a3ec84eff668545956fd18022155c47e93e2684 # pin@v4.2.3
+      - name: Upload oci manifest artifact
+        uses: actions/upload-artifact@v4
         with:
-          path: oci_manifest_entry_${{ env.CNAME }}.json
-          key: oci-manifest-${{ matrix.flavor }}-${{ matrix.arch }}-${{ github.run_id }}
+          name: oci_manifest_entry_${{ env.CNAME }}.json
+          path: manifests/
       - name: Output digest to be signed
         run: |
-          cat digest.txt
+          cat digest
 
   upload_manifests_entries:
     needs: "upload_gl_artifacts_to_oci"
@@ -85,39 +85,45 @@ jobs:
     defaults:
       run:
         shell: bash
-    env:
-      CNAME: ''
     permissions:
       id-token: write
       packages: write
       actions: write
-    strategy:
-      fail-fast: false
-      matrix: ${{ fromJson(needs.generate_matrix_publish.outputs.matrix) }}
-      max-parallel: 1
     steps:
       - name: Install python-gardenlinux-lib
-        uses: gardenlinux/python-gardenlinux-lib/.github/actions/setup@8901e3679feb077060f4b33769efe071133f3199 # pin@0.8.7
-      - name: Set flavor version reference
-        run: |
-          git rev-parse HEAD | cut -c1-8 | tee COMMIT
-          echo "${{ inputs.version }}" | tee VERSION
-      - name: Set CNAME
-        run: |
-          echo "CNAME=$(gl-features-parse --cname ${{ matrix.flavor }}-${{ matrix.arch }} cname)" | tee -a "$GITHUB_ENV"
-      - uses: actions/cache/restore@5a3ec84eff668545956fd18022155c47e93e2684 # pin@v4.2.3
+        uses: gardenlinux/python-gardenlinux-lib/.github/actions/setup@a7545af15d3a1fa96675b24807eace643483da96 # pin@0.8.0
+      - name: Download OCI manifest artifacts
+        uses: actions/download-artifact@v4
         with:
-          path: oci_manifest_entry_${{ env.CNAME }}.json
-          key: oci-manifest-${{ matrix.flavor }}-${{ matrix.arch }}-${{ github.run_id }}
+          path: manifests
+          pattern: oci_manifest_entry_*
+          merge-multiple: true
       - name: Update index using glcli tool
         env:
           GL_CLI_REGISTRY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GL_CLI_REGISTRY_USERNAME: ${{ github.repository_owner }}
         run: |
-          mkdir manifests
-          mv oci_manifest_entry_${CNAME}.json manifests/
-
           gl-oci update-index \
             --container "ghcr.io/${{ github.repository }}" \
             --version ${{ inputs.version }} \
             --manifest_folder manifests
+      - name: Delete temporary OCI manifest entry files
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const artifacts = await github.rest.actions.listArtifactsForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              per_page: 100
+            });
+            for (const artifact of artifacts.data.artifacts) {
+              if (artifact.name.startsWith('oci_manifest_entry_')) {
+                console.log(`Deleting artifact: ${artifact.name}`);
+                await github.rest.actions.deleteArtifact({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  artifact_id: artifact.id
+                });
+                console.log(`Successfully deleted artifact: ${artifact.name}`);
+              }
+            }

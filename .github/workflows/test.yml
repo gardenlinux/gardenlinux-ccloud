@@ -1,8 +1,5 @@
 name: test hypervisor capabilities
 on:
-  push:
-    branches:
-      - ci-test-virtualization
   workflow_run:
     workflows:
       - nightly

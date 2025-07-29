@@ -20,35 +20,40 @@ runs:
         scp $SSH_OPTS /opt/ubuntu-cloud-init-ds.iso "$USER@$IP_HV2:/var/lib/libvirt/images/ubuntu-cloud-init-ds.iso"
 
     - name: Start VM on HyperVisor 1
-      uses: appleboy/ssh-action@v1
-      with:
-        host: 192.168.122.2
-        username: root
-        key_path: /opt/ssh_host_ed25519_key
-        script: |
+      shell: bash
+      run: |
+        KEY=/opt/ssh_host_ed25519_key
+        SSH_OPTS="-i $KEY -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+        USER="root"
+        IP_HV1="192.168.122.2"
+
+        ssh $SSH_OPTS "$USER@$IP_HV1" << EOF
           virsh define /opt/vm.xml
           virsh start VM
+        EOF
 
     - name: Wait for VM to be ready
-      uses: appleboy/ssh-action@v1
-      with:
-        host: 192.168.122.2
-        username: root
-        key_path: /opt/ssh_host_ed25519_key
-        script: |
+      shell: bash
+      run: |
+        KEY=/opt/ssh_host_ed25519_key
+        SSH_OPTS="-i $KEY -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+        USER="root"
+        IP_HV1="192.168.122.2"
+
+        ssh $SSH_OPTS "$USER@$IP_HV1" << EOF
           KEY=/opt/ssh_host_ed25519_key
-          SSH_OPTS="-i $KEY -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+          SSH_OPTS="-i \$KEY -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
           USER="root"
 
           MAX_ITER=40
           for ((i=1; i<=MAX_ITER; i++)); do
-            IP=$(virsh domifaddr VM | awk '/ipv4/ {print $4}' | cut -d'/' -f1)
-            if [ -z "$IP" ]; then
+            IP=\$(virsh domifaddr VM | awk '/ipv4/ {print \$4}' | cut -d'/' -f1)
+            if [ -z "\$IP" ]; then
               echo "No IP address found for VM. Retrying..."
-            elif ssh $SSH_OPTS "$USER@$IP" 'exit' 2>/dev/null; then
-              echo "VM is up at IP: $IP"
+            elif ssh \$SSH_OPTS "\$USER@\$IP" 'exit' 2>/dev/null; then
+              echo "VM is up at IP: \$IP"
               # create a dummy file for verification later
-              ssh $SSH_OPTS "$USER@$IP" 'echo "Hello, World!" > /opt/hello.txt'
+              ssh \$SSH_OPTS "\$USER@\$IP" 'echo "Hello, World!" > /opt/hello.txt'
               break
             fi
             if (( i == MAX_ITER )); then
@@ -56,35 +61,40 @@ runs:
               cat /var/log/VM.log
               exit 1
             fi
-            echo "Waiting for VM to respond to SSH... ($i/$MAX_ITER)"
+            echo "Waiting for VM to respond to SSH... (\$i/\$MAX_ITER)"
             sleep 10
           done
+        EOF
 
     - name: Mirgrate the VM to HyperVisor 2
-      uses: appleboy/ssh-action@v1
-      with:
-        host: 192.168.122.2
-        username: root
-        key_path: /opt/ssh_host_ed25519_key
-        script: |
-          USER="root"
-          HV2_IP="192.168.122.3"
+      shell: bash
+      run: |
+        KEY=/opt/ssh_host_ed25519_key
+        SSH_OPTS="-i $KEY -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+        USER="root"
+        IP_HV1="192.168.122.2"
 
-          virsh migrate --persistent --undefinesource --copy-storage-all --live VM qemu+ssh://$USER@$HV2_IP/system
+        ssh $SSH_OPTS "$USER@$IP_HV1" << EOF
+          USER="root"
+          IP_HV2="192.168.122.3"
+
+          virsh migrate --persistent --undefinesource --copy-storage-all --live VM qemu+ssh://\$USER@\$IP_HV2/system
           if virsh dominfo VM &>/dev/null; then
             echo "VM is still present on HV1 after migration!"
             exit 1
           fi
+        EOF
 
     - name: Verify VM status on HyperVisor 2
-      uses: appleboy/ssh-action@v1
-      with:
-        host: 192.168.122.3
-        username: root
-        key_path: /opt/ssh_host_ed25519_key
-        command_timeout: 30m
-        script: |
-          if virsh dominfo VM | awk '/State:/ {print $2}' | grep -q "running"; then
+      shell: bash
+      run: |
+        KEY=/opt/ssh_host_ed25519_key
+        SSH_OPTS="-i $KEY -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+        USER="root"
+        IP_HV2="192.168.122.3"
+
+        ssh $SSH_OPTS "$USER@$IP_HV2" << EOF
+          if virsh dominfo VM | awk '/State:/ {print \$2}' | grep -q "running"; then
             echo "VM is running on HV2."
           else
             echo "VM is not running on HV2."
@@ -92,7 +102,7 @@ runs:
           fi
 
           KEY=/opt/ssh_host_ed25519_key
-          SSH_OPTS="-i $KEY -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+          SSH_OPTS="-i \$KEY -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
           USER="root"
           # waiting for the IP to be visible to the new HyperVisor via DHCP takes WAYYYYYYY too long
           # the IP is static, so we can just use it directly
@@ -100,10 +110,10 @@ runs:
 
           MAX_ITER=40
           for ((i=1; i<=MAX_ITER; i++)); do
-            if ssh $SSH_OPTS "$USER@$IP" 'exit' 2>/dev/null; then
-              echo "VM is up at IP: $IP"
+            if ssh \$SSH_OPTS "\$USER@\$IP" 'exit' 2>/dev/null; then
+              echo "VM is up at IP: \$IP"
               # verify the migration by checking the dummy file
-              if ssh $SSH_OPTS "$USER@$IP" 'test -f /opt/hello.txt'; then
+              if ssh \$SSH_OPTS "\$USER@\$IP" 'test -f /opt/hello.txt'; then
                 echo "Dummy file exists on VM, migration successful."
                 break
               else
@@ -116,6 +126,7 @@ runs:
               cat /var/log/VM.log
               exit 1
             fi
-            echo "Waiting for VM to respond to SSH... ($i/$MAX_ITER)"
+            echo "Waiting for VM to respond to SSH... (\$i/\$MAX_ITER)"
             sleep 10
           done
+        EOF

@@ -39,13 +39,51 @@ runs:
         sudo virsh define ./.github/actions/test/integration/setup/hv2.xml
         sudo virsh start HV2
 
-    - name: Wait for HyperVisors to be ready
+    - name: Configure SSH and libvirt on HyperVisors
       shell: bash
       run: |
         KEY=/opt/ssh_host_ed25519_key
         SSH_OPTS="-i $KEY -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
         USER="root"
         MAX_ITER=30
+
+        setup_hv() {
+          local IP="$1"
+
+          # Configure SSH between HyperVisors
+          scp $SSH_OPTS /opt/ssh_host_ed25519_key "$USER@$IP:/opt/ssh_host_ed25519_key"
+          ssh $SSH_OPTS "$USER@$IP" << EOF
+            chmod 700 /root/.ssh
+            echo "" > /root/.ssh/config
+            echo "Host 192.168.122.*" >> /root/.ssh/config
+            echo "    StrictHostKeyChecking no" >> /root/.ssh/config
+            echo "    UserKnownHostsFile /dev/null" >> /root/.ssh/config
+            echo "    IdentityFile /opt/ssh_host_ed25519_key" >> /root/.ssh/config
+            echo "    IdentitiesOnly yes" >> /root/.ssh/config
+            echo "    User root" >> /root/.ssh/config
+            chmod 600 /root/.ssh/config
+            chmod 600 /opt/ssh_host_ed25519_key
+        EOF
+
+          # Set up libvirt storage pool and network
+          scp $SSH_OPTS ./.github/actions/test/integration/setup/virbr-vm.xml "$USER@$IP:/opt/virbr-vm.xml"
+          ssh $SSH_OPTS "$USER@$IP" << EOF
+            systemctl start libvirtd
+
+            virsh pool-destroy default || true
+            virsh pool-undefine default || true
+            virsh pool-define-as default dir --target /var/lib/libvirt/images
+            virsh pool-build default
+            virsh pool-start default
+            virsh pool-autostart default
+
+            virsh net-destroy default || true
+            virsh net-undefine default || true
+            virsh net-define /opt/virbr-vm.xml
+            virsh net-start default
+            virsh net-autostart default
+        EOF
+        }
 
         wait_for_ssh() {
           local VM_NAME="$1"
@@ -56,8 +94,7 @@ runs:
               echo "No IP address found for $VM_NAME. Retrying..."
             elif ssh $SSH_OPTS "$USER@$IP" 'exit' 2>/dev/null; then
               echo "$VM_NAME is up at IP: $IP"
-              scp $SSH_OPTS ./.github/actions/test/integration/setup/virbr-vm.xml "$USER@$IP:/opt/virbr-vm.xml"
-              scp $SSH_OPTS /opt/ssh_host_ed25519_key "$USER@$IP:/opt/ssh_host_ed25519_key"
+              setup_hv "$IP"
               break
             fi
             if (( i == MAX_ITER )); then
@@ -72,43 +109,3 @@ runs:
 
         wait_for_ssh HV1
         wait_for_ssh HV2
-
-    - name: Configure SSH between HyperVisors
-      uses: appleboy/ssh-action@v1
-      with:
-        host: "192.168.122.2,192.168.122.3"
-        username: root
-        key_path: /opt/ssh_host_ed25519_key
-        script: |
-          chmod 700 /root/.ssh
-          echo "" > /root/.ssh/config
-          echo "Host 192.168.122.*" >> /root/.ssh/config
-          echo "    StrictHostKeyChecking no" >> /root/.ssh/config
-          echo "    UserKnownHostsFile /dev/null" >> /root/.ssh/config
-          echo "    IdentityFile /opt/ssh_host_ed25519_key" >> /root/.ssh/config
-          echo "    IdentitiesOnly yes" >> /root/.ssh/config
-          echo "    User root" >> /root/.ssh/config
-          chmod 600 /root/.ssh/config
-          chmod 600 /opt/ssh_host_ed25519_key
-
-    - name: Set up network and storage configuration on HyperVisors
-      uses: appleboy/ssh-action@v1
-      with:
-        host: "192.168.122.2,192.168.122.3"
-        username: root
-        key_path: /opt/ssh_host_ed25519_key
-        script: |
-          systemctl start libvirtd
-
-          virsh pool-destroy default || true
-          virsh pool-undefine default || true
-          virsh pool-define-as default dir --target /var/lib/libvirt/images
-          virsh pool-build default
-          virsh pool-start default
-          virsh pool-autostart default
-
-          virsh net-destroy default || true
-          virsh net-undefine default || true
-          virsh net-define /opt/virbr-vm.xml
-          virsh net-start default
-          virsh net-autostart default

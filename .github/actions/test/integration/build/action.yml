@@ -13,8 +13,8 @@ runs:
       env:
         REPO: ghcr.io/gardenlinux/gardenlinux-ccloud
         TAG: ${{ inputs.image_tag }}
-        ESP_SIZE: 4 # GiB
-        DISK_SIZE: 8 # GiB
+        ESP_SIZE: 2  # GiB
+        DISK_SIZE: 8  # GiB
       run: |
         echo "REPO=$REPO" >> $GITHUB_ENV
         echo "TAG=$TAG" >> $GITHUB_ENV

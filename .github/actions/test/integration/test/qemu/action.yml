@@ -144,7 +144,7 @@ runs:
           local IP="$1"
           ssh $SSH_OPTS "$USER@$IP" << EOF
             virsh destroy VM-QEMU || true
-            virsh undefine VM-QEMU --nvram --tpm --remove-all-storage
+            virsh undefine VM-QEMU --nvram --tpm --remove-all-storage || true
             rm -f /var/lib/libvirt/images/ubuntu.qcow2
             rm -f /opt/vm-qemu.xml
         EOF

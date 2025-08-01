@@ -1,5 +1,5 @@
-name: test
-description: Execute Integration Tests for Hypervisor Capabilities
+name: test-cloudhypervisor
+description: Execute Integration Tests for Hypervisor Capabilities (CloudHyperVisor)
 runs:
   using: "composite"
   steps:
@@ -12,10 +12,12 @@ runs:
         IP_HV1="192.168.122.2"
         IP_HV2="192.168.122.3"
 
-        scp $SSH_OPTS ./.github/actions/test/integration/test/vm.xml "$USER@$IP_HV1:/opt/vm.xml"
-        scp $SSH_OPTS /opt/ubuntu.qcow2 "$USER@$IP_HV1:/var/lib/libvirt/images/ubuntu.qcow2"
+        scp $SSH_OPTS ./.github/actions/test/integration/test/cloudhypervisor/vm.xml "$USER@$IP_HV1:/opt/vm-chv.xml"
+        scp $SSH_OPTS /opt/ubuntu.raw "$USER@$IP_HV1:/var/lib/libvirt/images/ubuntu.raw"
         scp $SSH_OPTS /opt/ubuntu-cloud-init-ds.iso "$USER@$IP_HV1:/var/lib/libvirt/images/ubuntu-cloud-init-ds.iso"
 
+        # libvirt migration between cloudhypervisor instances does not support storage migration yet
+        scp $SSH_OPTS /opt/ubuntu.raw "$USER@$IP_HV2:/var/lib/libvirt/images/ubuntu.raw"
         # the cloud-init data is not migrated from source to destination, but needed for the VM to run at the destination
         scp $SSH_OPTS /opt/ubuntu-cloud-init-ds.iso "$USER@$IP_HV2:/var/lib/libvirt/images/ubuntu-cloud-init-ds.iso"
 
@@ -28,8 +30,8 @@ runs:
         IP_HV1="192.168.122.2"
 
         ssh $SSH_OPTS "$USER@$IP_HV1" << EOF
-          virsh define /opt/vm.xml
-          virsh start VM
+          virsh -c ch:///session define /opt/vm-chv.xml
+          virsh -c ch:///session start VM-CHV
         EOF
 
     - name: Wait for VM to be ready
@@ -47,10 +49,10 @@ runs:
 
           MAX_ITER=40
           for ((i=1; i<=MAX_ITER; i++)); do
-            IP=\$(virsh domifaddr VM | awk '/ipv4/ {print \$4}' | cut -d'/' -f1)
+            IP=\$(virsh -c ch:///session domifaddr VM-CHV | awk '/ipv4/ {print \$4}' | cut -d'/' -f1)
             if [ -z "\$IP" ]; then
               echo "No IP address found for VM. Retrying..."
-            elif ssh \$SSH_OPTS "\$USER@\$IP" 'exit' 2>/dev/null; then
+            elif ssh \$SSH_OPTS "\$USER@\$IP" 'exit' ; then
               echo "VM is up at IP: \$IP"
               # create a dummy file for verification later
               ssh \$SSH_OPTS "\$USER@\$IP" 'echo "Hello, World!" > /opt/hello.txt'
@@ -58,7 +60,7 @@ runs:
             fi
             if (( i == MAX_ITER )); then
               echo "Timeout waiting for VM to respond to SSH."
-              cat /var/log/VM.log
+              cat /var/log/CHV.log
               exit 1
             fi
             echo "Waiting for VM to respond to SSH... (\$i/\$MAX_ITER)"
@@ -78,8 +80,8 @@ runs:
           USER="root"
           IP_HV2="192.168.122.3"
 
-          virsh migrate --persistent --undefinesource --copy-storage-all --live VM qemu+ssh://\$USER@\$IP_HV2/system
-          if virsh dominfo VM &>/dev/null; then
+          virsh -c ch:///session migrate --persistent --undefinesource --live VM-CHV ch+ssh://\$USER@\$IP_HV2/system
+          if virsh -c ch:///session dominfo VM-CHV &>/dev/null; then
             echo "VM is still present on HV1 after migration!"
             exit 1
           fi
@@ -94,7 +96,7 @@ runs:
         IP_HV2="192.168.122.3"
 
         ssh $SSH_OPTS "$USER@$IP_HV2" << EOF
-          if virsh dominfo VM | awk '/State:/ {print \$2}' | grep -q "running"; then
+          if virsh -c ch:///session dominfo VM-CHV | awk '/State:/ {print \$2}' | grep -q "running"; then
             echo "VM is running on HV2."
           else
             echo "VM is not running on HV2."
@@ -106,11 +108,11 @@ runs:
           USER="root"
           # waiting for the IP to be visible to the new HyperVisor via DHCP takes WAYYYYYYY too long
           # the IP is static, so we can just use it directly
-          IP="192.168.222.2"
+          IP="192.168.222.3"
 
           MAX_ITER=40
           for ((i=1; i<=MAX_ITER; i++)); do
-            if ssh \$SSH_OPTS "\$USER@\$IP" 'exit' 2>/dev/null; then
+            if ssh \$SSH_OPTS "\$USER@\$IP" 'exit' ; then
               echo "VM is up at IP: \$IP"
               # verify the migration by checking the dummy file
               if ssh \$SSH_OPTS "\$USER@\$IP" 'test -f /opt/hello.txt'; then
@@ -123,7 +125,7 @@ runs:
             fi
             if (( i == MAX_ITER )); then
               echo "Timeout waiting for VM to respond to SSH."
-              cat /var/log/VM.log
+              cat /var/log/CHV.log
               exit 1
             fi
             echo "Waiting for VM to respond to SSH... (\$i/\$MAX_ITER)"

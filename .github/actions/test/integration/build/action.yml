@@ -110,6 +110,11 @@ runs:
       run: |
         wget -q "https://cloud-images.ubuntu.com/minimal/releases/noble/release/ubuntu-24.04-minimal-cloudimg-amd64.img" -O /opt/ubuntu.qcow2
 
+    - name: Generate raw ubuntu image for CHV
+      shell: bash
+      run: |
+        qemu-img convert -p -f qcow2 -O raw /opt/ubuntu.qcow2 /opt/ubuntu.raw
+
     - name: Generate ubuntu cloud-init
       shell: bash
       run: |

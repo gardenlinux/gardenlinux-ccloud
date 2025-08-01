@@ -1,0 +1,37 @@
+<domain type='kvm'>
+    <name>VM-CHV</name>
+    <memory unit='GiB'>2</memory>
+    <vcpu placement='static'>1</vcpu>
+    <os>
+        <type arch='x86_64' machine='pc'>hvm</type>
+        <!-- see https://github.com/cloud-hypervisor/rust-hypervisor-firmware/issues/382 -->
+        <kernel>/usr/share/cloud-hypervisor/CLOUDHV_EFI.fd</kernel>
+    </os>
+    <cpu mode='host-passthrough' check='none' migratable='on' />
+    <devices>
+        <disk type='file' device='disk'>
+            <source file='/var/lib/libvirt/images/ubuntu.raw' />
+            <target dev='hda' bus='virtio' />
+        </disk>
+        <disk type='file' device='cdrom'>
+            <source file='/var/lib/libvirt/images/ubuntu-cloud-init-ds.iso' />
+            <target dev='hdb' bus='virtio' />
+            <readonly />
+        </disk>
+        <interface type='network'>
+            <mac address='52:54:00:00:00:11' />
+            <source network='default' />
+            <model type='virtio' />
+        </interface>
+        <!-- currently not supported with libvirt/chv: -->
+        <!-- error: internal error: Serial only works in UNIX/PTY modes -->
+        <!-- <console type='pty'> -->
+        <!--     <target type='serial' port='0' /> -->
+        <!-- </console> -->
+        <!-- <serial type='file'> -->
+        <!--     <source path='/var/log/CHV.log' /> -->
+        <!--     <target port='0' /> -->
+        <!-- </serial> -->
+    </devices>
+</domain>
+

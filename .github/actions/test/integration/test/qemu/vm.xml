@@ -1,5 +1,5 @@
 <domain type='kvm' xmlns:qemu='http://libvirt.org/schemas/domain/qemu/1.0'>
-    <name>VM</name>
+    <name>VM-QEMU</name>
     <memory unit='GiB'>2</memory>
     <vcpu>2</vcpu>
     <os firmware='efi'>
@@ -32,7 +32,7 @@
             <target type='serial' port='0' />
         </console>
         <serial type='file'>
-            <source path='/var/log/VM.log' />
+            <source path='/var/log/QEMU.log' />
             <target port='0' />
         </serial>
     </devices>

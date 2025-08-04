@@ -40,6 +40,6 @@ jobs:
         uses: ./.github/actions/test/integration/test/qemu
       - name: Test CloudHypervisor
         uses: ./.github/actions/test/integration/test/cloudhypervisor
-      - name: Emergency Debugging
-        if: failure()
-        uses: ./.github/actions/test/integration/emergency-debugging
+      - name: Collect Debug Logs
+        if: always()
+        uses: ./.github/actions/test/integration/collect-logs

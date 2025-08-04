@@ -47,7 +47,7 @@ runs:
           SSH_OPTS="-i \$KEY -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
           USER="root"
 
-          MAX_ITER=40
+          MAX_ITER=60
           for ((i=1; i<=MAX_ITER; i++)); do
             IP=\$(virsh -c ch:///session domifaddr VM-CHV | awk '/ipv4/ {print \$4}' | cut -d'/' -f1)
             if [ -z "\$IP" ]; then
@@ -60,7 +60,6 @@ runs:
             fi
             if (( i == MAX_ITER )); then
               echo "Timeout waiting for VM to respond to SSH."
-              cat /var/log/CHV.log
               exit 1
             fi
             echo "Waiting for VM to respond to SSH... (\$i/\$MAX_ITER)"
@@ -110,7 +109,7 @@ runs:
           # the IP is static, so we can just use it directly
           IP="192.168.222.3"
 
-          MAX_ITER=40
+          MAX_ITER=15
           for ((i=1; i<=MAX_ITER; i++)); do
             if ssh \$SSH_OPTS "\$USER@\$IP" 'exit' ; then
               echo "VM is up at IP: \$IP"
@@ -125,7 +124,6 @@ runs:
             fi
             if (( i == MAX_ITER )); then
               echo "Timeout waiting for VM to respond to SSH."
-              cat /var/log/CHV.log
               exit 1
             fi
             echo "Waiting for VM to respond to SSH... (\$i/\$MAX_ITER)"

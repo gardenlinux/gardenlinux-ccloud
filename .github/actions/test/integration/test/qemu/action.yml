@@ -130,25 +130,3 @@ runs:
             sleep 10
           done
         EOF
-
-    - name: Clean up HyperVisors
-      shell: bash
-      run: |
-        KEY=/opt/ssh_host_ed25519_key
-        SSH_OPTS="-i $KEY -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
-        USER="root"
-        IP_HV1="192.168.122.2"
-        IP_HV2="192.168.122.3"
-
-        cleanup() {
-          local IP="$1"
-          ssh $SSH_OPTS "$USER@$IP" << EOF
-            virsh destroy VM-QEMU || true
-            virsh undefine VM-QEMU --nvram --tpm --remove-all-storage
-            rm -f /var/lib/libvirt/images/ubuntu.qcow2
-            rm -f /opt/vm-qemu.xml
-        EOF
-        }
-
-        cleanup "$IP_HV1"
-        cleanup "$IP_HV2"

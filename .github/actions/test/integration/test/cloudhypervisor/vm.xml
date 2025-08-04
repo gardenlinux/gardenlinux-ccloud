@@ -13,7 +13,7 @@
             <source file='/var/lib/libvirt/images/ubuntu.raw' />
             <target dev='hda' bus='virtio' />
         </disk>
-        <disk type='file' device='cdrom'>
+        <disk type='file' device='disk'>
             <source file='/var/lib/libvirt/images/ubuntu-cloud-init-ds.iso' />
             <target dev='hdb' bus='virtio' />
             <readonly />

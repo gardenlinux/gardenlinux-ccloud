@@ -45,7 +45,7 @@ runs:
           SSH_OPTS="-i \$KEY -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
           USER="root"
 
-          MAX_ITER=40
+          MAX_ITER=60
           for ((i=1; i<=MAX_ITER; i++)); do
             IP=\$(virsh domifaddr VM-QEMU | awk '/ipv4/ {print \$4}' | cut -d'/' -f1)
             if [ -z "\$IP" ]; then
@@ -58,7 +58,6 @@ runs:
             fi
             if (( i == MAX_ITER )); then
               echo "Timeout waiting for VM to respond to SSH."
-              cat /var/log/QEMU.log
               exit 1
             fi
             echo "Waiting for VM to respond to SSH... (\$i/\$MAX_ITER)"
@@ -108,7 +107,7 @@ runs:
           # the IP is static, so we can just use it directly
           IP="192.168.222.2"
 
-          MAX_ITER=40
+          MAX_ITER=15
           for ((i=1; i<=MAX_ITER; i++)); do
             if ssh \$SSH_OPTS "\$USER@\$IP" 'exit' 2>/dev/null; then
               echo "VM is up at IP: \$IP"
@@ -123,32 +122,9 @@ runs:
             fi
             if (( i == MAX_ITER )); then
               echo "Timeout waiting for VM to respond to SSH."
-              cat /var/log/QEMU.log
               exit 1
             fi
             echo "Waiting for VM to respond to SSH... (\$i/\$MAX_ITER)"
             sleep 10
           done
         EOF
-
-    - name: Clean up HyperVisors
-      shell: bash
-      run: |
-        KEY=/opt/ssh_host_ed25519_key
-        SSH_OPTS="-i $KEY -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
-        USER="root"
-        IP_HV1="192.168.122.2"
-        IP_HV2="192.168.122.3"
-
-        cleanup() {
-          local IP="$1"
-          ssh $SSH_OPTS "$USER@$IP" << EOF
-            virsh destroy VM-QEMU || true
-            virsh undefine VM-QEMU --nvram --tpm --remove-all-storage
-            rm -f /var/lib/libvirt/images/ubuntu.qcow2
-            rm -f /opt/vm-qemu.xml
-        EOF
-        }
-
-        cleanup "$IP_HV1"
-        cleanup "$IP_HV2"

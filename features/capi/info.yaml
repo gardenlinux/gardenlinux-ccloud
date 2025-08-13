@@ -4,6 +4,7 @@ features:
   include:
     - _pxe
     - _rescue
+    - _scicommon
     - khost 
     - server
     - sssd

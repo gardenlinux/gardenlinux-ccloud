@@ -51,7 +51,6 @@ mount --bind "$erofs" "$rootfs/tmp/initrd.include/root.img"
 
 initrd="$(mktemp)"
 
-touch "$rootfs/initrd"
 kernel="$(find "$rootfs/boot/" -name 'vmlinuz-*' | sort -V | tail -n 1)"
 
 chroot "$rootfs" dracut \

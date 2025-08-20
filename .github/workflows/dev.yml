@@ -1,6 +1,8 @@
 name: dev
 on:
   push:
+    branches:
+      - main
     paths-ignore:
       - "**/README.md"
       - "docs/**"
@@ -28,7 +30,7 @@ jobs:
     with:
       version: ${{ needs.set_version.outputs.VERSION }}
       # to set target to "release" or "nightly" we need proper KMS secrets
-      # have a look at gardenlinux/.github/workflows/github.mjs 
+      # have a look at gardenlinux/.github/workflows/github.mjs
       target: dev
       fail_fast: true
       platform_test_build: false

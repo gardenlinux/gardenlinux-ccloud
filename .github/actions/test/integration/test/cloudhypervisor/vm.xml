@@ -23,15 +23,13 @@
             <source network='default' />
             <model type='virtio' />
         </interface>
-        <!-- currently not supported with libvirt/chv: -->
-        <!-- error: internal error: Serial only works in UNIX/PTY modes -->
-        <!-- <console type='pty'> -->
-        <!--     <target type='serial' port='0' /> -->
-        <!-- </console> -->
-        <!-- <serial type='file'> -->
-        <!--     <source path='/var/log/CHV.log' /> -->
-        <!--     <target port='0' /> -->
-        <!-- </serial> -->
+        <console type='pty'>
+            <target type='serial' port='0' />
+        </console>
+        <serial type='file'>
+            <source path='/var/log/CHV.log' />
+            <target port='0' />
+        </serial>
     </devices>
 </domain>
 

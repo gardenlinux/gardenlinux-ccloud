@@ -11,3 +11,4 @@ gdisk
 binutils
 oras
 efibootmgr
+systemd-ukify

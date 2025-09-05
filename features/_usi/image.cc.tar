@@ -49,9 +49,7 @@ done
 touch "$rootfs/tmp/initrd.include/root.img"
 mount --bind "$erofs" "$rootfs/tmp/initrd.include/root.img"
 
-initrd="$(mktemp)"
-
-kernel="$(find "$rootfs/boot/" -name 'vmlinuz-*' | sort -V | tail -n 1)"
+kernel="$(find "$rootfs/boot/" -name 'vmlinuz-*' -printf '%P\n' | sort -V | tail -n 1)"
 
 chroot "$rootfs" dracut \
 	--no-hostonly \
@@ -67,12 +65,6 @@ chroot "$rootfs" dracut \
 
 umount "$rootfs/tmp/initrd.include/root.img"
 
-umount -l "$rootfs/proc"
-umount -R "$rootfs/dev"
-umount "$rootfs/tmp"
-
-mv "$rootfs/initrd" "$initrd"
-
 case "$BUILDER_ARCH" in
 	amd64)
 		uefi_arch=X64
@@ -82,18 +74,16 @@ case "$BUILDER_ARCH" in
 		;;
 esac
 
-uki="$(mktemp)"
-
 read -r _ cmdline < "$rootfs/etc/kernel/cmdline"
 
-/usr/lib/systemd/ukify build \
-	--stub "$rootfs/usr/lib/systemd/boot/efi/linux$(tr '[:upper:]' '[:lower:]' <<< "$uefi_arch").efi.stub" \
-	--linux "$kernel" \
-	--initrd "$initrd" \
+chroot "$rootfs" ukify build \
+	--stub "/usr/lib/systemd/boot/efi/linux$(tr '[:upper:]' '[:lower:]' <<< "$uefi_arch").efi.stub" \
+	--linux "/boot/$kernel" \
+	--initrd "/initrd" \
 	--uname "${kernel#*-}" \
 	--cmdline "$cmdline xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" \
-	--os-release "@$rootfs/etc/os-release" \
-	--output "$uki"
+	--os-release "@/etc/os-release" \
+	--output "/uki"
 
 
 esp_dir="$(mktemp -d)"
@@ -101,14 +91,15 @@ esp_tar="$(mktemp)"
 
 dest_dir="$(mktemp -d)"
 
-cp "$uki" "$dest_dir"/uki
-rm "$uki"
-cp "$initrd" "$dest_dir"/initrd
-rm "$initrd"
-cp "$kernel" "$dest_dir"/vmlinuz
+mv "$rootfs/uki" "$dest_dir"/uki
+mv "$rootfs/initrd" "$dest_dir"/initrd
+cp "$rootfs/boot/$kernel" "$dest_dir"/vmlinuz
 cp "$erofs" "$dest_dir"/squashfs
 
 rm "$erofs"
+umount -l "$rootfs/proc"
+umount -R "$rootfs/dev"
+umount "$rootfs/tmp"
 umount "$rootfs"
 rmdir "$rootfs"
 

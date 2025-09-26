@@ -26,7 +26,7 @@ jobs:
         run: echo "VERSION=$(cat VERSION)" >> $GITHUB_OUTPUT
   build:
     needs: [set_version]
-    uses: gardenlinux/gardenlinux/.github/workflows/build.yml@bced61a3657ac2335f3baf1cae37e0f859313ee1
+    uses: gardenlinux/gardenlinux/.github/workflows/build.yml@b49b2dc9853b2a91a509c6ad947bc538797a4068
     with:
       version: ${{ needs.set_version.outputs.VERSION }}
       # to set target to "release" or "nightly" we need proper KMS secrets

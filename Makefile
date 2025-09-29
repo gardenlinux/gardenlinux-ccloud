@@ -24,7 +24,7 @@ prepare:
 	git submodule update --init --recursive
 
 update:
-    # update gardenlinux submodule to specified or latest commit
+	# update gardenlinux submodule to specified or latest commit
 	cd $(ROOT_DIR)/gardenlinux && git fetch && git checkout $(COMMIT) && cd ..
 	git add gardenlinux
 

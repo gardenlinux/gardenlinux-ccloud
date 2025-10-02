@@ -141,10 +141,7 @@ jobs:
 
       - name: Build
         run: |
-          pwd
-          ls -l
-          ls -l ..
-          cp flavors.yaml ..
+          cp -v ../flavors.yaml .
           make ${{ matrix.flavor }}-${{ matrix.arch }}-build
 
       - name: Determine CNAME

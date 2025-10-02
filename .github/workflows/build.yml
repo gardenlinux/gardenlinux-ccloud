@@ -57,7 +57,7 @@ jobs:
       version: ${{ inputs.version == '' && 'now' || inputs.version }}
       target: ${{ inputs.target }}
     permissions:
-      actions: write # TODO: 3215 elevated permissions for included workflow
+      actions: write
 
   bootstrap:
     needs: requirements
@@ -143,6 +143,8 @@ jobs:
         run: |
           pwd
           ls -l
+          ls -l ..
+          cp flavors.yaml ..
           make ${{ matrix.flavor }}-${{ matrix.arch }}-build
 
       - name: Determine CNAME

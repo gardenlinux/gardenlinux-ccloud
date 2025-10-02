@@ -140,7 +140,10 @@ jobs:
           find ../.build -exec touch -d "@$t" {} +
 
       - name: Build
-        run: make ${{ matrix.flavor }}-${{ matrix.arch }}-build
+        run: |
+          pwd
+          ls -l
+          make ${{ matrix.flavor }}-${{ matrix.arch }}-build
 
       - name: Determine CNAME
         id: cname

@@ -142,7 +142,7 @@ jobs:
       - name: Build
         run: |
           cp -v ../flavors.yaml .
-          cp -rfv ../features/* ./features/
+          cp -rv ../features/* ./features/ || true
           make ${{ matrix.flavor }}-${{ matrix.arch }}-build
 
       - name: Determine CNAME

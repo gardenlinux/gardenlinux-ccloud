@@ -144,7 +144,15 @@ jobs:
           cp -v ../flavors.yaml .
           cp -v ../build.config .
           cp -rv ../features/* ./features/ || :
+          echo "*** ../.build ***"
+          ls -l ../.build/
+          echo "*** ./.build ***"
+          ls -l ./.build | :
           make ${{ matrix.flavor }}-${{ matrix.arch }}-build
+          echo "*** ../.build ***"
+          ls -l ../.build/ 
+          echo "*** ./.build ***"
+          ls -l ./.build | :
 
       - name: Determine CNAME
         id: cname

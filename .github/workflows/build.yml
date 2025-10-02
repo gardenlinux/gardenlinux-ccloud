@@ -139,10 +139,18 @@ jobs:
           t="$(date '+%s')"
           find ../.build -exec touch -d "@$t" {} +
 
+      - name: Free disk space
+        run: |
+          sudo rm -rf /opt/hostedtoolcache/go || :
+          sudo rm -rf /opt/hostedtoolcache/node || :
+          sudo rm -rf /opt/hostedtoolcache/CodeQL || :
+          sudo rm -rf /opt/microsoft || :
+          sudo rm -rf /opt/az || :
+
       - name: Build
         run: |
           cp -v ../flavors.yaml .
-          cp -rv ../features/* ./features/ || true
+          cp -rv ../features/* ./features/ || :
           make ${{ matrix.flavor }}-${{ matrix.arch }}-build
 
       - name: Determine CNAME

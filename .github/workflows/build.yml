@@ -48,6 +48,7 @@ on:
         value: ${{ jobs.requirements.outputs.version }}
       bare_flavors_matrix:
         value: ${{ jobs.bare_flavors_matrix.outputs.matrix }}
+
 jobs:
   requirements:
     name: Prepare build requirements
@@ -77,21 +78,28 @@ jobs:
 
   flavors:
     needs: [bootstrap, flavors_matrix, requirements]
+    runs-on: ubuntu-latest
+    # runs-on:  ${{ inputs.arch == 'arm64' && 'ubuntu-24.04-arm' || 'ubuntu-24.04' }}
     name: Build flavors
-    uses: gardenlinux/gardenlinux/.github/workflows/build_flavor.yml@b49b2dc9853b2a91a509c6ad947bc538797a4068
     strategy:
       matrix: ${{ fromJson(needs.flavors_matrix.outputs.matrix ) }}
       fail-fast: ${{ inputs.fail_fast }}
-    with:
-      arch: ${{ matrix.arch }}
-      flavor: ${{ matrix.flavor }}
-      commit_id: ${{ needs.requirements.outputs.commit_id }}
-      version: ${{ needs.requirements.outputs.version }}
-      signing_env: ${{ needs.requirements.outputs.signing_env }}
-    secrets: inherit
     permissions:
       id-token: write
       actions: write
+    # secrets: inherit
+    defaults:
+      run:
+        working-directory: ./gardenlinux
+    steps:
+      - name: Build flavors
+        uses: gardenlinux/gardenlinux/.github/workflows/build_flavor.yml@b49b2dc9853b2a91a509c6ad947bc538797a4068
+        with:
+          arch: ${{ matrix.arch }}
+          flavor: ${{ matrix.flavor }}
+          commit_id: ${{ needs.requirements.outputs.commit_id }}
+          version: ${{ needs.requirements.outputs.version }}
+          signing_env: ${{ needs.requirements.outputs.signing_env }}
 
   kmodbuild_container:
     needs: [flavors, requirements]

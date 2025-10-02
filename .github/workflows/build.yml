@@ -145,8 +145,9 @@ jobs:
           cp -v ../build.config .
           cp -rv ../features/* ./features/ || :
           ln -sv ../.build .
-          ls -l
+          ls -la
           make ${{ matrix.flavor }}-${{ matrix.arch }}-build
+          ls -la .build/
 
       - name: Determine CNAME
         id: cname

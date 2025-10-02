@@ -137,7 +137,7 @@ jobs:
       - name: Update bootstrap stage build artifact timestamps
         run: |
           t="$(date '+%s')"
-          find .build -exec touch -d "@$t" {} +
+          find ../.build -exec touch -d "@$t" {} +
 
       - name: Build
         run: make ${{ matrix.flavor }}-${{ matrix.arch }}-build

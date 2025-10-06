@@ -150,6 +150,7 @@ jobs:
           #   fi
           # done
           # ln -sv ../.build .
+          cp ./flavors.yaml ./gardenlinux/flavors.yaml
           make ${{ matrix.flavor }}-${{ matrix.arch }}-build
 
       - name: Determine CNAME

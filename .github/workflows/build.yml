@@ -86,10 +86,6 @@ jobs:
     permissions:
       id-token: write
       actions: write
-    # defaults:
-    #   run:
-    #     shell: bash
-    #     working-directory: ./gardenlinux
     env:
       CNAME: ''
       USE_KMS: ${{ needs.requirements.outputs.signing_env == '' && 'false' || 'true' }}
@@ -137,19 +133,10 @@ jobs:
       - name: Update bootstrap stage build artifact timestamps
         run: |
           t="$(date '+%s')"
-          # find ../.build -exec touch -d "@$t" {} +
           find ./.build -exec touch -d "@$t" {} +
 
       - name: Build
         run: |
-          # cp -v ../flavors.yaml .
-          # cp -v ../build.config .
-          # for feature in ../features/*; do
-          #   if [ -d $feature ] && [ ! -d ./features/`basename $feature` ]; then
-          #     cp -rv $feature ./features/
-          #   fi
-          # done
-          # ln -sv ../.build .
           cp ./flavors.yaml ./gardenlinux/flavors.yaml
           make ${{ matrix.flavor }}-${{ matrix.arch }}-build
 

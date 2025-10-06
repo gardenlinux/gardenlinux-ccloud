@@ -150,6 +150,8 @@ jobs:
           #   fi
           # done
           # ln -sv ../.build .
+          pwd
+          ls -la
           make ${{ matrix.flavor }}-${{ matrix.arch }}-build
 
       - name: Determine CNAME

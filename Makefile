@@ -18,7 +18,7 @@ ccloud-help:
 
 help: ccloud-help
 
--include gardenlinux/Makefile
+include gardenlinux/Makefile
 
 prepare:
 	git submodule update --init --recursive

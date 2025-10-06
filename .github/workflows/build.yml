@@ -143,7 +143,9 @@ jobs:
         run: |
           cp -v ../flavors.yaml .
           cp -v ../build.config .
-          cp -rv ../features/* ./features/ || :
+          for feature in ../features/*; do
+            [ -d ./features/$feature ] || cp -rv ../features/$feature ./features/
+          done
           ln -sv ../.build .
           make ${{ matrix.flavor }}-${{ matrix.arch }}-build
 

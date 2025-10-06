@@ -141,7 +141,6 @@ jobs:
 
       - name: Build
         run: |
-          set -x
           cp -v ../flavors.yaml .
           cp -v ../build.config .
           for feature in ../features/*; do

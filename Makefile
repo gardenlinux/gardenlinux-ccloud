@@ -19,6 +19,8 @@ ccloud-help:
 help: ccloud-help
 
 -include gardenlinux/Makefile
+$(shell echo $(FLAVORS))
+$(shell echo $(FLAVORS_BARE))
 
 prepare:
 	git submodule update --init --recursive

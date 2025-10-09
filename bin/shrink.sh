@@ -1,0 +1,1 @@
+../gardenlinux/bin/shrink.sh

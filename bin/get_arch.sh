@@ -1,0 +1,1 @@
+../gardenlinux/bin/get_arch.sh

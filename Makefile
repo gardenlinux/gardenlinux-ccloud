@@ -24,14 +24,14 @@ prepare:
 	git submodule update --init --recursive
 
 update:
-    # update gardenlinux submodule to specified or latest commit
+	# update gardenlinux submodule to specified or latest commit
 	cd $(ROOT_DIR)/gardenlinux && git fetch && git checkout $(COMMIT) && cd ..
 	git add gardenlinux
 
-    # update workflow commit references
+	# update workflow commit references
 	sed -i -E 's|(gardenlinux/gardenlinux/.github/workflows/[^@]*)@[0-9a-f]{40}|\1@$(COMMIT)|g' $(ROOT_DIR)/.github/workflows/*.y*ml
 
-    # update features
+	# update features
 	mkdir -p $(ROOT_DIR)/features
 	for feature in $$(ls $(ROOT_DIR)/gardenlinux/features); do \
 		if [ -L "$(ROOT_DIR)/features/$$feature" ]; then \
@@ -39,6 +39,20 @@ update:
 		fi; \
 		if [ ! -e "$(ROOT_DIR)/features/$$feature" ]; then \
 			cd $(ROOT_DIR)/features && ln -s "../gardenlinux/features/$$feature" "$$feature"; \
+		fi; \
+	done
+
+	# update symlinks in bin folder
+	mkdir -p $(ROOT_DIR)/bin
+	for script in $$(ls -A $(ROOT_DIR)/gardenlinux/bin); do \
+		if [ "$$script" == "." ] || [ "$$script" == ".." ]; then \
+			continue; \
+		fi; \
+		if [ -L "$(ROOT_DIR)/bin/$$script" ]; then \
+			rm "$(ROOT_DIR)/bin/$$script"; \
+		fi; \
+		if [ ! -e "$(ROOT_DIR)/bin/$$script" ]; then \
+			cd $(ROOT_DIR)/bin && ln -s "../gardenlinux/bin/$$script" "$$script"; \
 		fi; \
 	done
 

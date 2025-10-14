@@ -31,6 +31,8 @@ jobs:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # pin@v4.1.1
         with:
           submodules: true
+      - uses: oras-project/setup-oras@v1
+      - run: oras version
       - name: Install python-gardenlinux-lib
         uses: gardenlinux/python-gardenlinux-lib/.github/actions/setup@02879bd567ed39b5610332afcc6e46197073db0c # pin@0.10.0
       - name: Install cosign
@@ -64,6 +66,10 @@ jobs:
             --cname "${CNAME}" \
             --cosign_file digest.txt \
             --manifest_file "oci_manifest_entry_${CNAME}.json"
+      - name: Add additional semver tag
+        run: |
+          echo ${{ secrets.GITHUB_TOKEN }} | oras login -u ${{ github.repository_owner }} --password-stdin ghcr.io
+          oras tag ghcr.io/${{ github.repository }}:${{ inputs.version }}-${CNAME}-${{ matrix.arch }} ${{ inputs.version }}-${CNAME//_/-}-${{ matrix.arch }}
       - uses: actions/cache/save@5a3ec84eff668545956fd18022155c47e93e2684 # pin@v4.2.3
         with:
           path: oci_manifest_entry_${{ env.CNAME }}.json

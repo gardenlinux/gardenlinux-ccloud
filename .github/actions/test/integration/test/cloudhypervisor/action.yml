@@ -79,7 +79,7 @@ runs:
           USER="root"
           IP_HV2="192.168.122.3"
 
-          virsh -c ch:///session migrate --persistent --undefinesource --live VM-CHV ch+ssh://\$USER@\$IP_HV2/system
+          virsh -c ch:///session migrate --p2p --persistent --undefinesource --live VM-CHV ch+ssh://\$USER@\$IP_HV2/system
           if virsh -c ch:///session dominfo VM-CHV &>/dev/null; then
             echo "VM is still present on HV1 after migration!"
             exit 1

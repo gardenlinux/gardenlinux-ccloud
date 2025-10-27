@@ -77,7 +77,7 @@ runs:
           USER="root"
           IP_HV2="192.168.122.3"
 
-          virsh migrate --persistent --undefinesource --copy-storage-all --live VM-QEMU qemu+ssh://\$USER@\$IP_HV2/system
+          virsh migrate --p2p --persistent --undefinesource --copy-storage-all --live VM-QEMU qemu+ssh://\$USER@\$IP_HV2/system
           if virsh dominfo VM-QEMU &>/dev/null; then
             echo "VM is still present on HV1 after migration!"
             exit 1

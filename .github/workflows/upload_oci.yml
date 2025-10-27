@@ -69,7 +69,10 @@ jobs:
       - name: Add additional semver tag
         run: |
           echo ${{ secrets.GITHUB_TOKEN }} | oras login -u ${{ github.repository_owner }} --password-stdin ghcr.io
-          oras tag ghcr.io/${{ github.repository }}:${{ inputs.version }}-${CNAME}-${{ matrix.arch }} ${{ inputs.version }}-${CNAME//_/-}-${{ matrix.arch }}
+          CNAME2=${CNAME//_/-}
+          CNAME2=${CNAME2//-${{ inputs.version }}/}
+          echo "Adding additional tag: ${{ inputs.version }}-${CNAME2}-${{ matrix.arch }}"
+          oras tag ghcr.io/${{ github.repository }}:${{ inputs.version }}-${CNAME}-${{ matrix.arch }} ${{ inputs.version }}-${CNAME2}-${{ matrix.arch }}
       - uses: actions/cache/save@5a3ec84eff668545956fd18022155c47e93e2684 # pin@v4.2.3
         with:
           path: oci_manifest_entry_${{ env.CNAME }}.json

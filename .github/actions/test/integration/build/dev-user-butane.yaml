@@ -56,3 +56,30 @@ storage:
     contents:
       inline: |
         OCI_REPO=ghcr.io/gardenlinux/gardenlinux-ccloud
+  # Enable unlimited core dumps for all systemd services
+  - path: /etc/systemd/system.conf.d/10-core.conf
+    mode: 0644
+    contents:
+      inline: |
+        [Manager]
+        DefaultLimitCORE=infinity
+  # Configure systemd-coredump with reasonable limits
+  - path: /etc/systemd/coredump.conf.d/50-ci-core.conf
+    mode: 0644
+    contents:
+      inline: |
+        [Coredump]
+        Storage=external
+        ProcessSizeMax=3G
+        ExternalSizeMax=3G
+        MaxUse=2G
+        KeepFree=1G
+        Compress=yes
+  # Set kernel core pattern to use systemd-coredump
+  - path: /etc/sysctl.d/50-core.conf
+    mode: 0644
+    contents:
+      inline: |
+        kernel.core_pattern=|/usr/lib/systemd/systemd-coredump %P %u %g %s %t %c %h
+        kernel.core_pipe_limit=16
+        fs.suid_dumpable=2

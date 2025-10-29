@@ -39,9 +39,44 @@ runs:
       run: |
         sudo chmod 644 *.log
 
-    - name: Upload artifacts
+    - name: Collect coredumps from hypervisors
+      shell: bash
+      run: |
+        KEY=/opt/ssh_host_ed25519_key
+        SSH_OPTS="-i $KEY -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+        USER="root"
+
+        for HV_NAME in HV1 HV2; do
+          IP="192.168.122.$([[ $HV_NAME == HV1 ]] && echo 2 || echo 3)"
+
+          ssh $SSH_OPTS $USER@$IP "
+            # Only proceed if coredumps exist
+            if coredumpctl list --no-legend 2>/dev/null | grep -q .; then
+              mkdir -p /tmp/coredumps-$HV_NAME
+              for id in \$(coredumpctl list --no-legend 2>/dev/null | awk '{print \$5}'); do
+                echo Processing core \$id
+                coredumpctl info \$id > /tmp/coredumps-$HV_NAME/info-\$id.txt 2>/dev/null || true
+                coredumpctl dump \$id > /tmp/coredumps-$HV_NAME/core-\$id 2>/dev/null || true
+              done
+            else
+              echo 'No coredumps present on $HV_NAME'
+            fi
+          " || true
+
+          if ssh $SSH_OPTS $USER@$IP "[ -d /tmp/coredumps-$HV_NAME ] && [ -n \"\$(ls /tmp/coredumps-$HV_NAME 2>/dev/null)\" ]"; then
+            scp -r $SSH_OPTS $USER@$IP:/tmp/coredumps-$HV_NAME ./ || true
+          fi
+         done
+
+    - name: Upload debug logs
       uses: actions/upload-artifact@v4
       with:
         name: debug-logs
         path: "*.log"
 
+    - name: Upload coredumps (if any exist)
+      uses: actions/upload-artifact@v4
+      if: ${{ hashFiles('coredumps-*/**') != '' }}
+      with:
+        name: coredumps
+        path: coredumps-*/

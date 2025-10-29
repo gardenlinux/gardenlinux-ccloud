@@ -1,0 +1,5 @@
+# default presets for _usi image due to the immuatable /usr
+disable apt-daily.timer
+disable dpkg-db-backup.timer
+disable systemd-sysupdate-reboot.timer
+disable systemd-sysupdate.timer

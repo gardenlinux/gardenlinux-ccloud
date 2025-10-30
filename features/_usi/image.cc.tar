@@ -58,7 +58,7 @@ chroot "$rootfs" dracut \
 	--kver "${kernel#*-}" \
 	--modules "bash dash systemd systemd-emergency systemd-initrd systemd-repart systemd-resolved systemd-cryptsetup kernel-modules kernel-modules-extra terminfo udev-rules dracut-systemd base fs-lib shutdown crypt" \
 	--reproducible \
-	--install 'find findmnt grep lsblk tail head realpath basename sfdisk mkfs.ext4 mkfs.vfat wget oras efibootmgr objcopy resizefat32 dd cryptsetup' \
+	--install 'find findmnt grep lsblk tail head realpath basename sfdisk mkfs.ext4 mkfs.vfat wget oras efibootmgr objcopy objdump resizefat32 dd cryptsetup' \
 	--include '/tmp/initrd.include' / \
 	--add-drivers erofs \
 	/initrd
@@ -81,7 +81,7 @@ chroot "$rootfs" ukify build \
 	--linux "/boot/$kernel" \
 	--initrd "/initrd" \
 	--uname "${kernel#*-}" \
-	--cmdline "$cmdline xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" \
+	--cmdline "$cmdline" \
 	--os-release "@/etc/os-release" \
 	--output "/uki"
 

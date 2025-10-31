@@ -90,7 +90,7 @@ if [ "$ENABLE_HUGEPAGE_SETUP" = "true" ]; then
   fi
   align=$(objdump -p $addon | grep Section | awk '{ print "16#"$2}')
   offs=$((offs + "$align" - offs % "$align"))
-  mkdir -p /sysroot/efi/EFI/loader/addons
+  mkdir -p /sysroot/efi/loader/addons
   objcopy --add-section .cmdline=/tmp/cmdlinef --change-section-vma .cmdline=$(printf 0x%x $offs) $addon /sysroot/efi/EFI/loader/addons/hugepages.addon.efi
 fi
 

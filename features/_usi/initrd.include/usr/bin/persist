@@ -81,12 +81,17 @@ UKI_SHA=$(oras manifest fetch "$OCI_REPO:${OCI_TAG}" | jq -r '.layers[] | select
 oras blob fetch "$OCI_REPO@$UKI_SHA" -o "$esp_dir/EFI/Linux/uki.efi"
 
 if [ "$ENABLE_HUGEPAGE_SETUP" = "true" ]; then
-  # update the kernel cmdline in the uki
-  # TODO: when using the USI tool to perform the in place update, should the cmdline of the new image also be changed?
-  # n.b. secureboot makes all this impossible!
-  cmdline=$(objcopy --dump-section .cmdline=/dev/stdout /sysroot/efi/EFI/Linux/uki.efi | sed -r 's/x{8,}//')
-  echo "$cmdline hugepagesz=2MB hugepages=$hugepages" > /tmp/cmdlinef
-  objcopy --update-section .cmdline=/tmp/cmdlinef /sysroot/efi/EFI/Linux/uki.efi
+  echo "hugepagesz=2MB hugepages=$hugepages" > /tmp/cmdlinef
+  addon="/sysroot/usr/lib/systemd/boot/efi/addonx64.efi.stub"
+  offs=$(objdump -h $addon | awk 'NF==7 {size=$3;offset=$4} END {print "16#"size" + 16#"offset}')
+  if [[ $offs -eq 0 ]]; then
+    echo "the offset can't be calculated for the stub addon"
+    exit 1
+  fi
+  align=$(objdump -p $addon | grep Section | awk '{ print "16#"$2}')
+  offs=$((offs + "$align" - offs % "$align"))
+  mkdir -p /sysroot/efi/EFI/loader/addons
+  objcopy --add-section .cmdline=/tmp/cmdlinef --change-section-vma .cmdline=$(printf 0x%x $offs) $addon /sysroot/efi/EFI/loader/addons/hugepages.addon.efi
 fi
 
 # Network config generation

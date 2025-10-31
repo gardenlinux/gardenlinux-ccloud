@@ -90,8 +90,9 @@ if [ "$ENABLE_HUGEPAGE_SETUP" = "true" ]; then
   fi
   align=$(objdump -p $addon | grep Section | awk '{ print "16#"$2}')
   offs=$((offs + "$align" - offs % "$align"))
-  mkdir -p /sysroot/efi/loader/addons
-  objcopy --add-section .cmdline=/tmp/cmdlinef --change-section-vma .cmdline=$(printf 0x%x $offs) $addon /sysroot/efi/EFI/loader/addons/hugepages.addon.efi
+  addon_dir="$esp_dir/loader/addons"
+  mkdir -p "$addon_dir"
+  objcopy --add-section .cmdline=/tmp/cmdlinef --change-section-vma .cmdline=$(printf 0x%x $offs) $addon "$addon_dir/hugepages.addon.efi"
 fi
 
 # Network config generation

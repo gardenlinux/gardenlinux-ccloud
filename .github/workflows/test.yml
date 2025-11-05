@@ -1,34 +1,8 @@
-# Test hypervisor capabilities with automatic PR image building
-# 
-# This workflow tests Garden Linux cloud images against QEMU and CloudHypervisor.
-# It supports multiple trigger modes:
-#
-# 1. Manual dispatch: Test any existing GHCR image tag
-# 2. Nightly workflow completion: Test latest nightly builds  
-# 3. Dev workflow completion: Test PR-specific builds (same-repo PRs only)
-# 4. Push to feat/ci-test-cloud-hypervisor: Direct testing (temporary)
-#
-# For same-repo PRs, the workflow:
-# - Downloads build artifacts from the completed dev workflow
-# - Extracts UKI and rootfs components  
-# - Publishes temporary PR-specific image to GHCR (tag: pr-{number}-{sha}-sci_usi-amd64)
-# - Runs tests against this PR-specific image
-#
-# For fork PRs or when prepare_image fails:
-# - Falls back to latest nightly sci_usi image from GHCR
-# - Provides clear warnings about fallback behavior
-#
-# The prepare_image job only runs for workflow_run triggers from dev workflow
-# on same-repository PRs (not forks) to ensure security and access to secrets.
-
 name: test hypervisor capabilities
 on:
   push:
     branches:
       - feat/ci-test-cloud-hypervisor
-  # Trigger when nightly or dev workflows complete
-  # - nightly: test latest nightly builds
-  # - dev: test PR changes (enables PR-specific image building)
   workflow_run:
     workflows:
       - nightly
@@ -44,8 +18,6 @@ on:
         default: ""
 
 jobs:
-  # Prepare PR-specific image for testing
-  # Only runs for same-repo PRs when triggered by dev workflow
   prepare_image:
     runs-on: ubuntu-latest
     # Only run for workflow_run events from dev workflow on same-repo PRs
@@ -58,7 +30,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        
       - name: Get PR info
         id: pr_info
         run: |
@@ -67,16 +38,14 @@ jobs:
           SHORT_SHA="${SHORT_SHA:0:7}"
           echo "pr_number=$PR_NUMBER" >> $GITHUB_OUTPUT
           echo "short_sha=$SHORT_SHA" >> $GITHUB_OUTPUT
-          
       - name: Download build artifacts
         id: download
         continue-on-error: true
         uses: actions/download-artifact@v4
         with:
-          name: build-sci-amd64
+          name: build-metal-sci_usi-amd64.zip
           github-token: ${{ secrets.GITHUB_TOKEN }}
           run-id: ${{ github.event.workflow_run.id }}
-          
       - name: Check download success
         if: steps.download.outcome == 'failure'
         run: |
@@ -87,90 +56,87 @@ jobs:
           echo "  - Insufficient permissions to access the artifact"
           echo ""
           echo "Workflow run ID: ${{ github.event.workflow_run.id }}"
-          echo "Expected artifact name: build-sci-amd64"
+          echo "Expected artifact name: build-metal-sci_usi-amd64.zip"
           exit 1
-          
       - name: Extract and prepare image components
         id: extract
         run: |
           # Check if artifact file exists
-          if [[ ! -f "build-sci-amd64.tar" ]]; then
-            echo "❌ Artifact file build-sci-amd64.tar not found"
+          if [[ ! -f "build-metal-sci_usi-amd64.zip" ]]; then
+            echo "❌ Artifact file build-metal-sci_usi-amd64.zip not found"
             echo "Available files:"
             ls -la
             exit 1
           fi
-          
-          # Extract the tar archive
+
+          # Extract the zip archive
           echo "📦 Extracting build artifacts..."
-          tar -tf build-sci-amd64.tar | head -10  # Show first 10 files for debugging
-          tar -xf build-sci-amd64.tar
-          
+          unzip -l build-metal-sci_usi-amd64.zip | head -10  # Show first 10 files for debugging
+          unzip build-metal-sci_usi-amd64.zip
+
           # Find UKI and rootfs files
           echo "🔍 Looking for UKI (.efi) and rootfs (.tar) files..."
           UKI_FILE=$(find . -name "*.efi" | head -1)
-          ROOTFS_FILE=$(find . -name "*.tar" ! -name "build-sci-amd64.tar" | head -1)
-          
+          ROOTFS_FILE=$(find . -name "*.tar" ! -name "build-metal-sci_usi-amd64.zip" | head -1)
+
           echo "Found files:"
-          find . -name "*.efi" -o -name "*.tar" | grep -v "build-sci-amd64.tar"
-          
+          find . -name "*.efi" -o -name "*.tar" | grep -v "build-metal-sci_usi-amd64.zip"
+
           if [[ -z "$UKI_FILE" ]]; then
             echo "❌ Could not find UKI file (*.efi)"
             echo "Available .efi files:"
             find . -name "*.efi" || echo "None found"
             exit 1
           fi
-          
+
           if [[ -z "$ROOTFS_FILE" ]]; then
-            echo "❌ Could not find rootfs file (*.tar, excluding build-sci-amd64.tar)"
+            echo "❌ Could not find rootfs file (*.tar, excluding build-metal-sci_usi-amd64.zip)"
             echo "Available .tar files:"
             find . -name "*.tar" || echo "None found"
             exit 1
           fi
-          
+
           echo "✅ Found UKI file: $UKI_FILE"
           echo "✅ Found rootfs file: $ROOTFS_FILE"
-          
+
           echo "uki_file=$UKI_FILE" >> $GITHUB_OUTPUT
           echo "rootfs_file=$ROOTFS_FILE" >> $GITHUB_OUTPUT
-          
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-          
       - name: Publish temporary PR image
         id: publish
         run: |
           PR_TAG="pr-${{ steps.pr_info.outputs.pr_number }}-${{ steps.pr_info.outputs.short_sha }}-sci_usi-amd64"
           REGISTRY="ghcr.io/gardenlinux/gardenlinux-ccloud"
-          
+
           echo "🚀 Publishing temporary image with tag: $PR_TAG"
           echo "Registry: $REGISTRY"
           echo "UKI file: ${{ steps.extract.outputs.uki_file }}"
           echo "Rootfs file: ${{ steps.extract.outputs.rootfs_file }}"
-          
+
           # Verify files exist before pushing
           if [[ ! -f "${{ steps.extract.outputs.uki_file }}" ]]; then
             echo "❌ UKI file not found: ${{ steps.extract.outputs.uki_file }}"
             exit 1
           fi
-          
+
           if [[ ! -f "${{ steps.extract.outputs.rootfs_file }}" ]]; then
             echo "❌ Rootfs file not found: ${{ steps.extract.outputs.rootfs_file }}"
             exit 1
           fi
-          
+
           # Push to GHCR with error handling
           if oras push "$REGISTRY:$PR_TAG" \
             "${{ steps.extract.outputs.uki_file }}:application/io.gardenlinux.uki" \
             "${{ steps.extract.outputs.rootfs_file }}:application/io.gardenlinux.image.archive.format.tar"; then
-            
+
             echo "✅ Successfully published $REGISTRY:$PR_TAG"
             echo "image_tag=$PR_TAG" >> $GITHUB_OUTPUT
-            
+
             # Verify the image was published
             echo "🔍 Verifying published image..."
             oras manifest fetch "$REGISTRY:$PR_TAG" > /dev/null && echo "✅ Image verification successful"
@@ -183,7 +149,6 @@ jobs:
             echo "  - Registry rate limits"
             exit 1
           fi
-
   test:
     runs-on: ubuntu-latest
     needs: [prepare_image]
@@ -213,7 +178,6 @@ jobs:
               fi
             fi
           fi
-          
       - name: Determine image tag to use
         id: fetch_tag
         run: |
@@ -230,7 +194,7 @@ jobs:
             echo "Fetching latest nightly image tag"
             image_tag=$(oras repo tags ghcr.io/gardenlinux/gardenlinux-ccloud | grep 'sci_usi' | sort -r | head -n 1)
           fi
-          
+
           echo "Selected image tag: $image_tag"
           echo "latest_tag=$image_tag" >> $GITHUB_ENV
       - name: Build

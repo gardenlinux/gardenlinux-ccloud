@@ -6,10 +6,12 @@ inputs:
     required: true
   pr-number:
     description: 'Pull request number'
-    required: true
+    required: false
+    default: ''
   commit-sha:
     description: 'Commit SHA (will be truncated to 7 chars)'
-    required: true
+    required: false
+    default: ''
   github-token:
     description: 'GitHub token for artifact download and GHCR push'
     required: true
@@ -21,6 +23,7 @@ outputs:
   image-tag:
     description: 'The published image tag'
     value: ${{ steps.publish.outputs.image_tag }}
+
 runs:
   using: 'composite'
   steps:
@@ -33,122 +36,66 @@ runs:
         SHORT_SHA="${SHORT_SHA:0:7}"
         echo "pr_number=$PR_NUMBER" >> $GITHUB_OUTPUT
         echo "short_sha=$SHORT_SHA" >> $GITHUB_OUTPUT
-        
     - name: Download build artifacts
       id: download
       continue-on-error: true
       uses: actions/download-artifact@v4
       with:
-        name: build-metal-sci_usi-amd64.zip
+        name: build-metal-sci_usi-amd64
         github-token: ${{ inputs.github-token }}
         run-id: ${{ inputs.workflow-run-id }}
-        
     - name: Check download success
       if: steps.download.outcome == 'failure'
       shell: bash
       run: |
-        echo "❌ Failed to download build artifacts from dev workflow"
-        echo "This could be because:"
-        echo "  - The dev workflow failed to produce artifacts"
-        echo "  - The artifact has expired (artifacts have a retention period)"
-        echo "  - Insufficient permissions to access the artifact"
-        echo ""
-        echo "Workflow run ID: ${{ inputs.workflow-run-id }}"
-        echo "Expected artifact name: build-metal-sci_usi-amd64.zip"
+        echo "Failed to download build artifacts from dev workflow"
         exit 1
-        
-    - name: Extract and prepare image components
-      id: extract
-      shell: bash
-      run: |
-        # Check if artifact file exists
-        if [[ ! -f "build-metal-sci_usi-amd64.zip" ]]; then
-          echo "❌ Artifact file build-metal-sci_usi-amd64.zip not found"
-          echo "Available files:"
-          ls -la
-          exit 1
-        fi
-        
-        # Extract the zip archive
-        echo "📦 Extracting build artifacts..."
-        unzip -l build-metal-sci_usi-amd64.zip | head -10  # Show first 10 files for debugging
-        unzip build-metal-sci_usi-amd64.zip
-        
-        # Find UKI and rootfs files
-        echo "🔍 Looking for UKI (.efi) and rootfs (.tar) files..."
-        UKI_FILE=$(find . -name "*.efi" | head -1)
-        ROOTFS_FILE=$(find . -name "*.tar" ! -name "build-metal-sci_usi-amd64.zip" | head -1)
-        
-        echo "Found files:"
-        find . -name "*.efi" -o -name "*.tar" | grep -v "build-metal-sci_usi-amd64.zip"
-        
+     - name: Extract and prepare image components
+       id: extract
+       shell: bash
+       run: |
+         # The downloaded artifact is already a zip file, extract it
+         unzip build-metal-sci_usi-amd64.zip
+
+         UKI_FILE=$(find . -name "*.efi" | head -1)
+         ROOTFS_FILE=$(find . -name "*.tar" | head -1)
+
         if [[ -z "$UKI_FILE" ]]; then
           echo "❌ Could not find UKI file (*.efi)"
           echo "Available .efi files:"
           find . -name "*.efi" || echo "None found"
           exit 1
         fi
-        
-        if [[ -z "$ROOTFS_FILE" ]]; then
-          echo "❌ Could not find rootfs file (*.tar, excluding build-metal-sci_usi-amd64.zip)"
-          echo "Available .tar files:"
-          find . -name "*.tar" || echo "None found"
-          exit 1
-        fi
-        
-        echo "✅ Found UKI file: $UKI_FILE"
-        echo "✅ Found rootfs file: $ROOTFS_FILE"
-        
+
+         if [[ -z "$ROOTFS_FILE" ]]; then
+           echo "❌ Could not find rootfs file (*.tar)"
+           echo "Available .tar files:"
+           find . -name "*.tar" || echo "None found"
+           exit 1
+         fi
+
         echo "uki_file=$UKI_FILE" >> $GITHUB_OUTPUT
         echo "rootfs_file=$ROOTFS_FILE" >> $GITHUB_OUTPUT
-        
     - name: Login to GitHub Container Registry
       uses: docker/login-action@v3
       with:
         registry: ghcr.io
         username: ${{ github.actor }}
         password: ${{ inputs.github-token }}
-        
     - name: Publish temporary PR image
       id: publish
       shell: bash
       run: |
         PR_TAG="pr-${{ steps.pr_info.outputs.pr_number }}-${{ steps.pr_info.outputs.short_sha }}-sci_usi-amd64"
         REGISTRY="${{ inputs.registry }}"
-        
-        echo "🚀 Publishing temporary image with tag: $PR_TAG"
-        echo "Registry: $REGISTRY"
-        echo "UKI file: ${{ steps.extract.outputs.uki_file }}"
-        echo "Rootfs file: ${{ steps.extract.outputs.rootfs_file }}"
-        
-        # Verify files exist before pushing
-        if [[ ! -f "${{ steps.extract.outputs.uki_file }}" ]]; then
-          echo "❌ UKI file not found: ${{ steps.extract.outputs.uki_file }}"
-          exit 1
-        fi
-        
-        if [[ ! -f "${{ steps.extract.outputs.rootfs_file }}" ]]; then
-          echo "❌ Rootfs file not found: ${{ steps.extract.outputs.rootfs_file }}"
-          exit 1
-        fi
-        
-        # Push to GHCR with error handling
+
+
         if oras push "$REGISTRY:$PR_TAG" \
           "${{ steps.extract.outputs.uki_file }}:application/io.gardenlinux.uki" \
           "${{ steps.extract.outputs.rootfs_file }}:application/io.gardenlinux.image.archive.format.tar"; then
-          
-          echo "✅ Successfully published $REGISTRY:$PR_TAG"
+
           echo "image_tag=$PR_TAG" >> $GITHUB_OUTPUT
-          
-          # Verify the image was published
-          echo "🔍 Verifying published image..."
-          oras manifest fetch "$REGISTRY:$PR_TAG" > /dev/null && echo "✅ Image verification successful"
         else
-          echo "❌ Failed to publish image to GHCR"
-          echo "This could be due to:"
-          echo "  - Network issues"
-          echo "  - Registry permissions"
-          echo "  - Invalid file formats"
-          echo "  - Registry rate limits"
+          echo "Failed to publish image to GHCR"
           exit 1
         fi

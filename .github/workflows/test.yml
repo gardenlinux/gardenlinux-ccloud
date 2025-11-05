@@ -11,32 +11,87 @@ on:
       - completed
   workflow_dispatch:
     inputs:
-      image_tag:
-        description: "Image tag to test (must be usi-sci). Leave empty to use latest nightly."
+      run_id:
+        description: "Completed dev workflow run ID whose artifacts to consume"
         type: string
+        required: false
         default: ""
+      pr_number:
+        description: "PR number for tagging (optional if run_id points to PR)"
+        type: string
+        required: false
+        default: ""
+      commit_sha:
+        description: "Commit SHA (optional; derive from workflow_run if omitted)"
+        type: string
+        required: false
+        default: ""
+      custom_image_tag:
+        description: "Use this image tag directly (skip artifact + publish)"
+        type: string
+        required: false
+        default: ""
+      use_nightly:
+        description: "Force use of latest nightly sci_usi image (true/false)"
+        type: boolean
+        required: false
+        default: false
 
 jobs:
   prepare_image:
     runs-on: ubuntu-latest
-    # Only run for workflow_run events from dev workflow on same-repo PRs
-    if: github.event_name == 'workflow_run' && github.event.workflow.name == 'dev' && github.event.pull_requests != null
     permissions:
       packages: write
       contents: read
     outputs:
-      image_tag: ${{ steps.prepare.outputs.image-tag }}
+      image_tag: ${{ steps.image_tag_output.outputs.image_tag }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Prepare PR Image
+
+      - name: Prepare PR Image (dev workflow_run)
         id: prepare
+        if: github.event_name == 'workflow_run' && github.event.workflow_run.name == 'dev' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'pull_request'
         uses: ./.github/actions/test/prepare-pr-image
         with:
           workflow-run-id: ${{ github.event.workflow_run.id }}
-          pr-number: ${{ github.event.pull_requests[0].number }}
+          pr-number: ${{ github.event.workflow_run.pull_requests[0].number }}
           commit-sha: ${{ github.event.workflow_run.head_sha }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Prepare PR Image (manual dispatch)
+        id: prepare_manual
+        if: github.event_name == 'workflow_dispatch' && inputs.run_id != '' && inputs.use_nightly != 'true' && inputs.custom_image_tag == ''
+        uses: ./.github/actions/test/prepare-pr-image
+        with:
+          workflow-run-id: ${{ inputs.run_id }}
+          pr-number: ${{ inputs.pr_number }}
+          commit-sha: ${{ inputs.commit_sha }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set custom image tag from input
+        id: set_custom
+        if: github.event_name == 'workflow_dispatch' && inputs.custom_image_tag != ''
+        shell: bash
+        run: echo "image_tag=${{ inputs.custom_image_tag }}" >> $GITHUB_OUTPUT
+
+      - name: Resolve image tag output
+        id: image_tag_output
+        shell: bash
+        run: |
+          TAG=""
+          if [[ "${{ steps.prepare.outcome }}" == "success" && "${{ steps.prepare.outputs.image_tag }}" != "" ]]; then
+            TAG="${{ steps.prepare.outputs.image_tag }}"
+          elif [[ "${{ steps.prepare_manual.outcome }}" == "success" && "${{ steps.prepare_manual.outputs.image_tag }}" != "" ]]; then
+            TAG="${{ steps.prepare_manual.outputs.image_tag }}"
+          elif [[ "${{ steps.set_custom.outcome }}" == "success" && "${{ steps.set_custom.outputs.image_tag }}" != "" ]]; then
+            TAG="${{ steps.set_custom.outputs.image_tag }}"
+          else
+            TAG=""  # Will be resolved in test job
+          fi
+          echo "Resolved image_tag: $TAG"
+          echo "image_tag=$TAG" >> $GITHUB_OUTPUT
+
   test:
     runs-on: ubuntu-latest
     needs: [prepare_image]
@@ -48,19 +103,25 @@ jobs:
         uses: ./.github/actions/test/integration/dependencies
       - name: Determine image tag to use
         id: fetch_tag
+        shell: bash
         run: |
           if [[ "${{ needs.prepare_image.outputs.image_tag }}" != "" ]]; then
-            # Use tag from prepare_image job if available
             image_tag="${{ needs.prepare_image.outputs.image_tag }}"
-          elif [[ "${{ inputs.image_tag }}" != "" ]]; then
-            # Use manual input if provided
-            image_tag="${{ inputs.image_tag }}"
-          else
-            # Fall back to latest nightly tag
+            echo "Using prepared image tag: $image_tag"
+          elif [[ "${{ github.event_name }}" == "workflow_dispatch" && inputs.use_nightly == 'true' ]]; then
             image_tag=$(oras repo tags ghcr.io/gardenlinux/gardenlinux-ccloud | grep 'sci_usi' | sort -r | head -n 1)
+            echo "Forced nightly tag: $image_tag"
+          elif [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ inputs.custom_image_tag }}" != "" ]]; then
+            image_tag="${{ inputs.custom_image_tag }}"
+            echo "Using custom image tag input: $image_tag"
+          elif [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ inputs.run_id }}" != "" ]]; then
+            echo "Artifact publish appears to have failed; falling back to nightly tag"
+            image_tag=$(oras repo tags ghcr.io/gardenlinux/gardenlinux-ccloud | grep 'sci_usi' | sort -r | head -n 1)
+          else
+            image_tag=$(oras repo tags ghcr.io/gardenlinux/gardenlinux-ccloud | grep 'sci_usi' | sort -r | head -n 1)
+            echo "Default nightly fallback tag: $image_tag"
           fi
-
-          echo $image_tag
+          echo "$image_tag"
           echo "latest_tag=$image_tag" >> $GITHUB_ENV
       - name: Build
         uses: ./.github/actions/test/integration/build

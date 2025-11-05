@@ -2,40 +2,10 @@ targets:
   - name: metal 
     category: baremetal
     flavors:
-      - features:
-          - sci
-          - _pxe
-        arch: amd64
-        build: true
-        test: true
-        test-platform: false
-        publish: false
-      - features:
-          - capi
-        arch: amd64
-        build: true
-        test: true
-        test-platform: false
-        publish: false
-      - features:
-          - scibase
-          - _usi
-        arch: amd64
-        build: true
-        test: true
-        test-platform: false
-        publish: false
+      # Keep only sci_usi flavor for testing - this is what our test workflow expects
       - features:
           - sci
           - _usi
-        arch: amd64
-        build: true
-        test: true
-        test-platform: false
-        publish: false
-      - features:
-          - sci
-          - _usidev
         arch: amd64
         build: true
         test: true

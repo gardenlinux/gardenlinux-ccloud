@@ -9,7 +9,6 @@ on:
       - dev
     types:
       - completed
-  # Manual trigger with optional specific image tag
   workflow_dispatch:
     inputs:
       image_tag:
@@ -21,7 +20,7 @@ jobs:
   prepare_image:
     runs-on: ubuntu-latest
     # Only run for workflow_run events from dev workflow on same-repo PRs
-    if: github.event_name == 'workflow_run' && github.event.workflow.name == 'dev' && github.event.pull_requests != null && github.event.pull_requests[0].head.repo.full_name == github.repository
+    if: github.event_name == 'workflow_run' && github.event.workflow.name == 'dev' && github.event.pull_requests != null
     permissions:
       packages: write
       contents: read
@@ -30,7 +29,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        
       - name: Prepare PR Image
         id: prepare
         uses: ./.github/actions/test/prepare-pr-image
@@ -42,55 +40,32 @@ jobs:
   test:
     runs-on: ubuntu-latest
     needs: [prepare_image]
-    if: always() # Run even if prepare_image is skipped
+    if: always()
     steps:
       - name: Checkout
         uses: actions/checkout@v4
       - name: Install Dependencies
         uses: ./.github/actions/test/integration/dependencies
-      - name: Check PR and prepare_image status
-        if: github.event_name == 'workflow_run'
-        run: |
-          if [[ "${{ github.event.pull_requests }}" != "null" && "${{ github.event.pull_requests }}" != "" ]]; then
-            if [[ "${{ github.event.pull_requests[0].head.repo.full_name }}" != "${{ github.repository }}" ]]; then
-              echo "⚠️ This is a fork PR - using nightly image instead of building PR-specific image"
-              echo "Fork repo: ${{ github.event.pull_requests[0].head.repo.full_name }}"
-              echo "Base repo: ${{ github.repository }}"
-            else
-              echo "✅ This is a same-repo PR"
-              if [[ "${{ needs.prepare_image.result }}" == "failure" ]]; then
-                echo "⚠️ prepare_image job failed - falling back to nightly image"
-                echo "Check the prepare_image job logs for details"
-              elif [[ "${{ needs.prepare_image.result }}" == "skipped" ]]; then
-                echo "⚠️ prepare_image job was skipped - falling back to nightly image"
-              elif [[ "${{ needs.prepare_image.result }}" == "success" ]]; then
-                echo "✅ prepare_image job succeeded - using PR-specific image"
-              fi
-            fi
-          fi
       - name: Determine image tag to use
         id: fetch_tag
         run: |
-          # Use tag from prepare_image job if available
           if [[ "${{ needs.prepare_image.outputs.image_tag }}" != "" ]]; then
-            echo "Using PR-specific image tag from prepare_image job"
+            # Use tag from prepare_image job if available
             image_tag="${{ needs.prepare_image.outputs.image_tag }}"
-          # Use manual input if provided
           elif [[ "${{ inputs.image_tag }}" != "" ]]; then
-            echo "Using manually provided image tag"
+            # Use manual input if provided
             image_tag="${{ inputs.image_tag }}"
-          # Fall back to latest nightly tag
           else
-            echo "Fetching latest nightly image tag"
+            # Fall back to latest nightly tag
             image_tag=$(oras repo tags ghcr.io/gardenlinux/gardenlinux-ccloud | grep 'sci_usi' | sort -r | head -n 1)
           fi
 
-          echo "Selected image tag: $image_tag"
+          echo $image_tag
           echo "latest_tag=$image_tag" >> $GITHUB_ENV
       - name: Build
         uses: ./.github/actions/test/integration/build
         with:
-          image_tag: ${{ env.latest_tag || inputs.image_tag }}
+          image_tag: ${{ env.latest_tag }}
       - name: Setup
         uses: ./.github/actions/test/integration/setup
       - name: Test QEMU

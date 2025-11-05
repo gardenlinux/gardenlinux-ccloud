@@ -27,15 +27,61 @@ outputs:
 runs:
   using: 'composite'
   steps:
+    - name: Fetch run metadata
+      id: run_meta
+      shell: bash
+      run: |
+        # Only fetch if commit-sha input not provided
+        if [[ -z "${{ inputs.commit-sha }}" ]]; then
+          echo "Fetching workflow run metadata for run ${{ inputs.workflow-run-id }} ..."
+          RESP=$(curl -s -H "Authorization: Bearer ${{ inputs.github-token }}" \
+                       -H "Accept: application/vnd.github+json" \
+                       "https://api.github.com/repos/${{ github.repository }}/actions/runs/${{ inputs.workflow-run-id }}")
+          HEAD_SHA=$(echo "$RESP" | jq -r '.head_sha // empty')
+          BRANCH=$(echo "$RESP" | jq -r '.head_branch // empty')
+          if [[ -n "$HEAD_SHA" ]]; then
+            echo "head_sha=$HEAD_SHA" >> $GITHUB_OUTPUT
+          fi
+          if [[ -n "$BRANCH" ]]; then
+            echo "head_branch=$BRANCH" >> $GITHUB_OUTPUT
+          fi
+        fi
     - name: Get PR info
       id: pr_info
       shell: bash
       run: |
-        PR_NUMBER="${{ inputs.pr-number }}"
-        SHORT_SHA="${{ inputs.commit-sha }}"
-        SHORT_SHA="${SHORT_SHA:0:7}"
-        echo "pr_number=$PR_NUMBER" >> $GITHUB_OUTPUT
-        echo "short_sha=$SHORT_SHA" >> $GITHUB_OUTPUT
+         PR_NUMBER="${{ inputs.pr-number }}"
+         SHORT_SHA="${{ inputs.commit-sha }}"
+         
+         # Use fetched metadata if available
+         if [[ -z "$SHORT_SHA" && -n "${{ steps.run_meta.outputs.head_sha }}" ]]; then
+           SHORT_SHA="${{ steps.run_meta.outputs.head_sha }}"
+         fi
+         
+         # Truncate SHA to 7 characters
+         SHORT_SHA="${SHORT_SHA:0:7}"
+         
+         # If PR number is still missing, try to extract from branch name
+         if [[ -z "$PR_NUMBER" && -n "${{ steps.run_meta.outputs.head_branch }}" ]]; then
+           BRANCH="${{ steps.run_meta.outputs.head_branch }}"
+           if [[ "$BRANCH" =~ ^refs/pull/([0-9]+)/merge$ ]]; then
+             PR_NUMBER="${BASH_REMATCH[1]}"
+           elif [[ "$BRANCH" =~ pr-([0-9]+) ]]; then
+             PR_NUMBER="${BASH_REMATCH[1]}"
+           fi
+         fi
+         
+         # Final fallback values
+         if [[ -z "$PR_NUMBER" ]]; then
+           PR_NUMBER="manual"
+         fi
+         
+         if [[ -z "$SHORT_SHA" ]]; then
+           SHORT_SHA="$(date +%s | tail -c 8)"
+         fi
+         
+         echo "pr_number=$PR_NUMBER" >> $GITHUB_OUTPUT
+         echo "short_sha=$SHORT_SHA" >> $GITHUB_OUTPUT
     - name: Download build artifacts
       id: download
       continue-on-error: true
@@ -50,32 +96,53 @@ runs:
       run: |
         echo "Failed to download build artifacts from dev workflow"
         exit 1
-     - name: Extract and prepare image components
-       id: extract
-       shell: bash
-       run: |
-         # The downloaded artifact is already a zip file, extract it
-         unzip build-metal-sci_usi-amd64.zip
+    - name: Extract and prepare image components
+      id: extract
+      shell: bash
+      run: |
+         # The artifact is downloaded as a directory by actions/download-artifact@v4
+         ART_DIR="build-metal-sci_usi-amd64"
+         
+         echo "🔍 Checking artifact directory structure..."
+         if [[ ! -d "$ART_DIR" ]]; then
+           echo "❌ Artifact directory $ART_DIR not found"
+           echo "Available files and directories:"
+           ls -la .
+           exit 1
+         fi
+         
+         echo "📁 Contents of $ART_DIR:"
+         ls -la "$ART_DIR"
+         
+         # Look for UKI and rootfs files in the artifact directory
+         UKI_FILE=$(find "$ART_DIR" -type f -name "*.efi" | head -1)
+         
+         # Look for compressed rootfs files (tar.xz, tar.zst, tar.gz, tar)
+         ROOTFS_FILE=$(find "$ART_DIR" -type f \( -name "*.tar.xz" -o -name "*.tar.zst" -o -name "*.tar.gz" -o -name "*.tar" \) | head -1)
 
-         UKI_FILE=$(find . -name "*.efi" | head -1)
-         ROOTFS_FILE=$(find . -name "*.tar" | head -1)
-
-        if [[ -z "$UKI_FILE" ]]; then
-          echo "❌ Could not find UKI file (*.efi)"
-          echo "Available .efi files:"
-          find . -name "*.efi" || echo "None found"
-          exit 1
-        fi
-
-         if [[ -z "$ROOTFS_FILE" ]]; then
-           echo "❌ Could not find rootfs file (*.tar)"
-           echo "Available .tar files:"
-           find . -name "*.tar" || echo "None found"
+         if [[ -z "$UKI_FILE" ]]; then
+           echo "❌ Could not find UKI file (*.efi) in $ART_DIR"
+           echo "Available .efi files:"
+           find "$ART_DIR" -name "*.efi" || echo "None found"
+           echo "All files in artifact directory:"
+           find "$ART_DIR" -type f
            exit 1
          fi
 
-        echo "uki_file=$UKI_FILE" >> $GITHUB_OUTPUT
-        echo "rootfs_file=$ROOTFS_FILE" >> $GITHUB_OUTPUT
+         if [[ -z "$ROOTFS_FILE" ]]; then
+           echo "❌ Could not find rootfs file (*.tar*) in $ART_DIR"
+           echo "Available compressed archive files:"
+           find "$ART_DIR" -name "*.tar*" || echo "None found"
+           echo "All files in artifact directory:"
+           find "$ART_DIR" -type f
+           exit 1
+         fi
+
+         echo "✅ Found UKI file: $UKI_FILE"
+         echo "✅ Found rootfs file: $ROOTFS_FILE"
+         
+         echo "uki_file=$UKI_FILE" >> $GITHUB_OUTPUT
+         echo "rootfs_file=$ROOTFS_FILE" >> $GITHUB_OUTPUT
     - name: Login to GitHub Container Registry
       uses: docker/login-action@v3
       with:
@@ -86,16 +153,26 @@ runs:
       id: publish
       shell: bash
       run: |
-        PR_TAG="pr-${{ steps.pr_info.outputs.pr_number }}-${{ steps.pr_info.outputs.short_sha }}-sci_usi-amd64"
+        PR_NUM="${{ steps.pr_info.outputs.pr_number }}"
+        SHORT_SHA="${{ steps.pr_info.outputs.short_sha }}"
+        
+        # Generate appropriate tag format
+        if [[ "$PR_NUM" == "manual" ]]; then
+          PR_TAG="manual-$SHORT_SHA-sci_usi-amd64"
+        else
+          PR_TAG="pr-$PR_NUM-$SHORT_SHA-sci_usi-amd64"
+        fi
+        
         REGISTRY="${{ inputs.registry }}"
-
+        echo "🚀 Publishing image with tag: $PR_TAG"
 
         if oras push "$REGISTRY:$PR_TAG" \
           "${{ steps.extract.outputs.uki_file }}:application/io.gardenlinux.uki" \
           "${{ steps.extract.outputs.rootfs_file }}:application/io.gardenlinux.image.archive.format.tar"; then
 
+          echo "✅ Successfully published image: $REGISTRY:$PR_TAG"
           echo "image_tag=$PR_TAG" >> $GITHUB_OUTPUT
         else
-          echo "Failed to publish image to GHCR"
+          echo "❌ Failed to publish image to GHCR"
           exit 1
         fi

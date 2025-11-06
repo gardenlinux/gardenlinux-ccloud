@@ -5,12 +5,21 @@ on:
       version:
         type: string
         default: today
+      upload_version:
+        type: string
+        default: ""
+      additional_semver_tag:
+        type: boolean
+        default: true
+      flavor_filter:
+        type: string
+        default: '--exclude "bare-*"'
 jobs:
   generate_matrix_publish:
     name: Generate flavors matrix to publish
     uses: gardenlinux/gardenlinux/.github/workflows/build_flavors_matrix.yml@3b5ec77e4873462d56658c4ecd56caa0ff63542b
     with:
-      flags: '--exclude "bare-*" --no-arch --json-by-arch --build --test'
+      flags: '${{ inputs.flavor_filter }} --no-arch --json-by-arch --build --test'
   upload_gl_artifacts:
     name: upload to OCI
     needs: [ generate_matrix_publish ]
@@ -62,17 +71,19 @@ jobs:
             --dir "${CNAME}" \
             --container "ghcr.io/${{ github.repository }}" \
             --arch ${{ matrix.arch }} \
-            --version ${{ inputs.version }} \
+            --version ${{ inputs.upload_version || inputs.version }} \
             --cname "${CNAME}" \
             --cosign_file digest.txt \
             --manifest_file "oci_manifest_entry_${CNAME}.json"
       - name: Add additional semver tag
+        if: ${{ inputs.additional_semver_tag }}
         run: |
           echo ${{ secrets.GITHUB_TOKEN }} | oras login -u ${{ github.repository_owner }} --password-stdin ghcr.io
+          UPLOAD_VER="${{ inputs.upload_version || inputs.version }}"
           CNAME2=${CNAME//_/-}
           CNAME2=${CNAME2//-${{ inputs.version }}/}
-          echo "Adding additional tag: ${{ inputs.version }}-${CNAME2}-${{ matrix.arch }}"
-          oras tag ghcr.io/${{ github.repository }}:${{ inputs.version }}-${CNAME}-${{ matrix.arch }} ${{ inputs.version }}-${CNAME2}-${{ matrix.arch }}
+          echo "Adding additional tag: ${UPLOAD_VER}-${CNAME2}-${{ matrix.arch }}"
+          oras tag ghcr.io/${{ github.repository }}:${UPLOAD_VER}-${CNAME}-${{ matrix.arch }} ${UPLOAD_VER}-${CNAME2}-${{ matrix.arch }}
       - uses: actions/cache/save@5a3ec84eff668545956fd18022155c47e93e2684 # pin@v4.2.3
         with:
           path: oci_manifest_entry_${{ env.CNAME }}.json
@@ -125,5 +136,5 @@ jobs:
 
           gl-oci update-index \
             --container "ghcr.io/${{ github.repository }}" \
-            --version ${{ inputs.version }} \
+            --version ${{ inputs.upload_version || inputs.version }} \
             --manifest_folder manifests

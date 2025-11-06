@@ -21,9 +21,15 @@ jobs:
         with:
           submodules: recursive
 
-      - name: use VERSION file to support dev build on rel-branch
+      - name: Derive version
         id: version
-        run: echo "VERSION=$(cat VERSION)" >> $GITHUB_OUTPUT
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "VERSION=today" >> $GITHUB_OUTPUT
+          else
+            echo "VERSION=$(cat VERSION)" >> $GITHUB_OUTPUT
+          fi
+
   build:
     needs: [set_version]
     uses: gardenlinux/gardenlinux/.github/workflows/build.yml@3b5ec77e4873462d56658c4ecd56caa0ff63542b
@@ -39,3 +45,30 @@ jobs:
       # aws_kms_role: ${{ secrets.KMS_SIGNING_IAM_ROLE }}
       # aws_oidc_session: ${{ secrets.AWS_OIDC_SESSION }}
       # secureboot_db_kms_arn: ${{ secrets.SECUREBOOT_DB_KMS_ARN }}
+
+  meta:
+    name: Compute image metadata
+    if: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.event.action != 'closed' }}
+    runs-on: ubuntu-latest
+    outputs:
+      UPLOAD_VERSION: ${{ steps.meta.outputs.upload_version }}
+    steps:
+      - name: Derive image version (pr-123-HASH)
+        id: meta
+        run: |
+          PR_NUMBER=${{ github.event.pull_request.number }}
+          COMMIT_HASH=${{ github.event.pull_request.head.sha }}
+          UPLOAD_VERSION="pr-${PR_NUMBER}-${COMMIT_HASH}"
+          echo "upload_version=${UPLOAD_VERSION}" >> $GITHUB_OUTPUT
+
+  upload:
+    name: Upload PR image to OCI
+    needs: [build, meta, set_version]
+    if: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.event.action != 'closed' }}
+    uses: ./.github/workflows/upload_oci.yml
+    with:
+      version: ${{ needs.set_version.outputs.VERSION }}
+      upload_version: ${{ needs.meta.outputs.UPLOAD_VERSION }}
+      flavor_filter: '--include-only "metal-sci_usi-amd64"'
+      additional_semver_tag: false
+    secrets: inherit

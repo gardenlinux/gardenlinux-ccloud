@@ -52,14 +52,16 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       UPLOAD_VERSION: ${{ steps.meta.outputs.upload_version }}
+      COMMIT_SHA: ${{ steps.meta.outputs.sha }}
     steps:
-      - name: Derive image version (pr-123-HASH)
+      - name: Derive image version
         id: meta
         run: |
           PR_NUMBER=${{ github.event.pull_request.number }}
-          COMMIT_HASH=${{ github.event.pull_request.head.sha }}
-          UPLOAD_VERSION="pr-${PR_NUMBER}-${COMMIT_HASH}"
+          UPLOAD_VERSION="pr-${PR_NUMBER}"
           echo "upload_version=${UPLOAD_VERSION}" >> $GITHUB_OUTPUT
+          SHA="${GITHUB_SHA::8}"
+          echo "sha=${SHA}" >> $GITHUB_OUTPUT
 
   upload:
     name: Upload PR image to OCI
@@ -72,3 +74,11 @@ jobs:
       flavor_filter: '--include-only "metal-sci_usi-amd64"'
       additional_semver_tag: false
     secrets: inherit
+
+  test:
+    name: Test PR image
+    needs: [set_version, meta, upload]
+    if: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.event.action != 'closed' }}
+    uses: ./.github/workflows/test.yml
+    with:
+      image_tag: "pr-${{ github.event.pull_request.number }}-metal-sci_usi-amd64-${{ needs.set_version.outputs.VERSION }}-${{ needs.meta.outputs.COMMIT_SHA }}-amd64"

@@ -27,7 +27,7 @@ jobs:
         id: fetch_tag
         if: ${{ inputs.image_tag == '' || github.event_name == 'workflow_run' || github.event_name == 'push' }}
         run: |
-          latest_tag=$(oras repo tags ghcr.io/gardenlinux/gardenlinux-ccloud | grep 'sci_usi' | sort -r | head -n 1)
+          latest_tag=$(oras repo tags ghcr.io/gardenlinux/gardenlinux-ccloud | grep -E '^[0-9]+\.[0-9]+\.[0-9]+-metal-sci-usi-amd64-[0-9a-f]{8}-amd64$' | sort -r | head -n 1)
           echo $latest_tag
           echo "latest_tag=$latest_tag" >> $GITHUB_ENV
       - name: Build

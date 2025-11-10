@@ -103,6 +103,7 @@ runs:
         PASSWORD=$(openssl passwd "password")
         echo "PASSWORD=$PASSWORD" >> $GITHUB_ENV
         sed -i "s|PASSWORD_GOES_HERE|$PASSWORD|g" ./.github/actions/test/integration/build/dev-user-butane.yaml
+        sed -i "s|TAG_GOES_HERE|${{ inputs.image_tag }}|g" ./.github/actions/test/integration/build/dev-user-butane.yaml
         butane --pretty --strict ./.github/actions/test/integration/build/dev-user-butane.yaml > "/opt/${TAG}.ign"
 
     - name: Download ubuntu cloud image

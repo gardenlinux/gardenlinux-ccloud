@@ -21,7 +21,7 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Derive version
+      - name: use VERSION file to support dev build on rel-branch
         id: version
         run: |
           if [ "${{ github.event_name }}" = "pull_request" ]; then
@@ -72,7 +72,6 @@ jobs:
       version: ${{ needs.set_version.outputs.VERSION }}
       upload_version: ${{ needs.meta.outputs.UPLOAD_VERSION }}
       flavor_filter: '--include-only "metal-sci_usi-amd64"'
-      additional_semver_tag: false
     secrets: inherit
 
   test:
@@ -81,4 +80,8 @@ jobs:
     if: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.event.action != 'closed' }}
     uses: ./.github/workflows/test.yml
     with:
-      image_tag: "pr-${{ github.event.pull_request.number }}-metal-sci_usi-amd64-${{ needs.set_version.outputs.VERSION }}-${{ needs.meta.outputs.COMMIT_SHA }}-amd64"
+      image_tag: "${{ needs.meta.outputs.UPLOAD_VERSION }}-metal-sci-usi-amd64-${{ needs.meta.outputs.COMMIT_SHA }}-amd64"
+
+# TODO on PR close, clean up everything in form of
+# oras repo tags ghcr.io/gardenlinux/gardenlinux-ccloud | grep -v -E '^[0-9]{4}\.[0-9]+.*$'
+# oras repo tags ghcr.io/gardenlinux/gardenlinux-ccloud | grep -E '^PREFIX$'

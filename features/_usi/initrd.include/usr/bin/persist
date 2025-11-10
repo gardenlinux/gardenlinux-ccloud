@@ -62,20 +62,19 @@ if [ ! -f "$OS_RELEASE_FILE" ]; then
   echo "File not found '$OS_RELEASE_FILE', exiting"
   exit 1
 fi
-
-# source optional config file
-[ -f /sysroot/opt/persist/gl-oci.conf ] && . /sysroot/opt/persist/gl-oci.conf
-OCI_REPO="${OCI_REPO:-keppel.global.cloud.sap/ccloud-ghcr-io-mirror/gardenlinux/gardenlinux-ccloud}"
-OCI_ARCH="${OCI_ARCH:-amd64}"
-
 # source os-release file
 . "$OS_RELEASE_FILE"
 
 # oras needs a proper HOME variable
 export HOME=/root
 
+# source optional config file
+[ -f /sysroot/opt/persist/gl-oci.conf ] && . /sysroot/opt/persist/gl-oci.conf
+OCI_REPO="${OCI_REPO:-keppel.global.cloud.sap/ccloud-ghcr-io-mirror/gardenlinux/gardenlinux-ccloud}"
+OCI_ARCH="${OCI_ARCH:-amd64}"
+
 # setup OCI_TAG, UKI_SHA and fetch UKI
-OCI_TAG="$GARDENLINUX_VERSION-$VARIANT_ID-$GARDENLINUX_COMMIT_ID-$OCI_ARCH"
+OCI_TAG=${OCI_TAG:-"$GARDENLINUX_VERSION-$VARIANT_ID-$GARDENLINUX_COMMIT_ID-$OCI_ARCH"}
 OCI_TAG=${OCI_TAG//_/-} # replace underscores with dashes
 UKI_SHA=$(oras manifest fetch "$OCI_REPO:${OCI_TAG}" | jq -r '.layers[] | select(.mediaType=="application/io.gardenlinux.uki") | .digest')
 oras blob fetch "$OCI_REPO@$UKI_SHA" -o "$esp_dir/EFI/Linux/uki.efi"

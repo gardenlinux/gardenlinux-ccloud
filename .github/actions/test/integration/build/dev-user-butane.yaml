@@ -50,12 +50,14 @@ storage:
     contents:
       inline: |
         NON_HUGEPAGES_PM=1000
-  # pull the image from GHCR instead of keppel
   - path: /opt/persist/gl-oci.conf
     mode: 0644
     contents:
       inline: |
+        # pull the image from GHCR instead of keppel
         OCI_REPO=ghcr.io/gardenlinux/gardenlinux-ccloud
+        # point to a custom tag to download for the persist step
+        OCI_TAG=TAG_GOES_HERE
   # Enable unlimited core dumps for all systemd services
   - path: /etc/systemd/system.conf.d/10-core.conf
     mode: 0644

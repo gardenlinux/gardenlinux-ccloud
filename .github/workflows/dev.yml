@@ -12,6 +12,7 @@ on:
       - "docs/**"
 jobs:
   set_version:
+    if: ${{ github.event_name != 'pull_request' || github.event.action != 'closed' }}
     runs-on: ubuntu-latest
     outputs:
       VERSION: ${{ steps.version.outputs.VERSION }}
@@ -32,6 +33,7 @@ jobs:
 
   build:
     needs: [set_version]
+    if: ${{ github.event_name != 'pull_request' || github.event.action != 'closed' }}
     uses: gardenlinux/gardenlinux/.github/workflows/build.yml@3b5ec77e4873462d56658c4ecd56caa0ff63542b
     with:
       version: ${{ needs.set_version.outputs.VERSION }}
@@ -82,6 +84,28 @@ jobs:
     with:
       image_tag: "${{ needs.meta.outputs.UPLOAD_VERSION }}-metal-sci-usi-amd64-${{ needs.meta.outputs.COMMIT_SHA }}-amd64"
 
-# TODO on PR close, clean up everything in form of
-# oras repo tags ghcr.io/gardenlinux/gardenlinux-ccloud | grep -v -E '^[0-9]{4}\.[0-9]+.*$'
-# oras repo tags ghcr.io/gardenlinux/gardenlinux-ccloud | grep -E '^PREFIX$'
+  cleanup_images:
+    name: Cleanup PR images
+    if: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.event.action == 'closed' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: oras
+        uses: oras-project/setup-oras@v1
+        with:
+          version: 1.2.2
+      - name: Cleanup OCI images
+        run: |
+          PR_NUMBER=${{ github.event.pull_request.number }}
+          UPLOAD_VERSION="pr-${PR_NUMBER}"
+          oras logout ghcr.io
+          echo "${{ secrets.GITHUB_TOKEN }}" | oras login ghcr.io -u "${{ github.actor }}" --password-stdin
+          tags=$(oras repo tags ghcr.io/gardenlinux/gardenlinux-ccloud | grep -E "^${UPLOAD_VERSION}(-.*)?$" || true)
+          if [ -n "$tags" ]; then
+            for tag in $tags; do
+              echo "Deleting tag: $tag"
+              oras manifest delete ghcr.io/gardenlinux/gardenlinux-ccloud:$tag || echo "Failed to delete $tag"
+            done
+            echo "Cleanup completed for PR ${PR_NUMBER}"
+          else
+            echo "No images found to cleanup for PR ${PR_NUMBER}"
+          fi

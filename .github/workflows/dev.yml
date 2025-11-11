@@ -7,6 +7,7 @@ on:
       - "**/README.md"
       - "docs/**"
   pull_request:
+    types: [opened, synchronize, reopened, closed]
     paths-ignore:
       - "**/README.md"
       - "docs/**"
@@ -103,7 +104,7 @@ jobs:
           if [ -n "$tags" ]; then
             for tag in $tags; do
               echo "Deleting tag: $tag"
-              oras manifest delete ghcr.io/gardenlinux/gardenlinux-ccloud:$tag || echo "Failed to delete $tag"
+              oras manifest delete --force ghcr.io/gardenlinux/gardenlinux-ccloud:$tag || echo "Failed to delete $tag"
             done
             echo "Cleanup completed for PR ${PR_NUMBER}"
           else

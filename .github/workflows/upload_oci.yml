@@ -40,7 +40,7 @@ jobs:
       - uses: oras-project/setup-oras@v1
       - run: oras version
       - name: Install python-gardenlinux-lib
-        uses: gardenlinux/python-gardenlinux-lib/.github/actions/setup@02879bd567ed39b5610332afcc6e46197073db0c # pin@0.10.0
+        uses: gardenlinux/python-gardenlinux-lib/.github/actions/setup@hotfix-disabled-python-cache-in-setup-action
       - name: Install cosign
         uses: sigstore/cosign-installer@v3.9.1
         with:
@@ -109,7 +109,7 @@ jobs:
         with:
           submodules: true
       - name: Install python-gardenlinux-lib
-        uses: gardenlinux/python-gardenlinux-lib/.github/actions/setup@02879bd567ed39b5610332afcc6e46197073db0c # pin@0.10.0
+        uses: gardenlinux/python-gardenlinux-lib/.github/actions/setup@hotfix-disabled-python-cache-in-setup-action
       - name: Set flavor version reference
         run: |
           git rev-parse HEAD | cut -c1-8 | tee COMMIT

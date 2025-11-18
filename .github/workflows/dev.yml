@@ -83,7 +83,7 @@ jobs:
     if: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.event.action != 'closed' }}
     uses: ./.github/workflows/test.yml
     with:
-      image_tag: "${{ needs.meta.outputs.UPLOAD_VERSION }}-metal-sci-usi-amd64-${{ needs.meta.outputs.COMMIT_SHA }}-amd64"
+      image_tag: "${{ needs.meta.outputs.UPLOAD_VERSION }}-metal-sci-usi-amd64-${{ needs.meta.outputs.UPLOAD_VERSION }}-${{ needs.meta.outputs.COMMIT_SHA }}"
 
   cleanup_images:
     name: Cleanup PR images

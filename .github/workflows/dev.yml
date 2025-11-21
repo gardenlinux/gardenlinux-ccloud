@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - main
+      - rel-1877-dev
     paths-ignore:
       - "**/README.md"
       - "docs/**"

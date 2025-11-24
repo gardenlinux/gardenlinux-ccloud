@@ -19,7 +19,7 @@ jobs:
       flags: '${{ inputs.flavor_filter }} --no-arch --json-by-arch --build --test'
   upload_gl_artifacts:
     name: upload to OCI
-    needs: [ generate_matrix_publish ]
+    needs: [generate_matrix_publish]
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -82,12 +82,25 @@ jobs:
           CNAME2=${CNAME2//-${{ inputs.version }}/}
           # Remove commit sha from CNAME
           CNAME2=${CNAME2//-${COMMIT_SHA_SHORT}/}
-          # 8 charachter commit hash
-          DASHED_VERSION=${{ inputs.upload_version || inputs.version }}
-          DASHED_VERSION=${DASHED_VERSION//./-}
 
-          echo "Adding additional tag: ${{ inputs.upload_version || inputs.version }}-${CNAME2}-${DASHED_VERSION}-${COMMIT_SHA_SHORT}"
-          oras tag ghcr.io/${{ github.repository }}:${{ inputs.version }}-${CNAME}-${{ matrix.arch }} ${{ inputs.upload_version || inputs.version }}.0-${CNAME2}-${DASHED_VERSION}-${COMMIT_SHA_SHORT}
+          # Read BUILD_TIMESTAMP from the artifact's /etc/os-release
+          OS_RELEASE="${CNAME}/etc/os-release"
+          if [ ! -f "${OS_RELEASE}" ]; then
+            echo "ERROR: /etc/os-release not found at ${OS_RELEASE}" >&2
+            exit 1
+          fi
+
+          BUILD_TIMESTAMP=$(grep '^BUILD_TIMESTAMP=' "${OS_RELEASE}" | cut -d= -f2)
+
+          if [ -z "${BUILD_TIMESTAMP}" ]; then
+            echo "ERROR: BUILD_TIMESTAMP not found in ${OS_RELEASE}" >&2
+            cat "${OS_RELEASE}" >&2
+            exit 1
+          fi
+
+          ADDITIONAL_TAG=${{ inputs.upload_version || inputs.version }}.0-${CNAME2}-${BUILD_TIMESTAMP}-${COMMIT_SHA_SHORT}
+          echo "Adding additional tag: ${ADDITIONAL_TAG}"
+          oras tag ghcr.io/${{ github.repository }}:${{ inputs.version }}-${CNAME}-${{ matrix.arch }} ${ADDITIONAL_TAG}
       - uses: actions/cache/save@5a3ec84eff668545956fd18022155c47e93e2684 # pin@v4.2.3
         with:
           path: oci_manifest_entry_${{ env.CNAME }}.json
@@ -95,9 +108,8 @@ jobs:
       - name: Output digest to be signed
         run: |
           cat digest.txt
-
   upload_manifests_entries:
-    needs: [ generate_matrix_publish, upload_gl_artifacts ]
+    needs: [generate_matrix_publish, upload_gl_artifacts]
     name: upload manifest entries into OCI index
     runs-on: ubuntu-latest
     defaults:

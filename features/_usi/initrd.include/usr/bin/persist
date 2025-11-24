@@ -65,6 +65,12 @@ fi
 # source os-release file
 . "$OS_RELEASE_FILE"
 
+# Verify BUILD_TIMESTAMP is set
+if [ -z "${BUILD_TIMESTAMP:-}" ]; then
+    echo "BUILD_TIMESTAMP not found in $OS_RELEASE_FILE, exiting"
+    exit 1
+fi
+
 # oras needs a proper HOME variable
 export HOME=/root
 
@@ -72,9 +78,8 @@ export HOME=/root
 [ -f /sysroot/opt/persist/gl-oci.conf ] && . /sysroot/opt/persist/gl-oci.conf
 OCI_REPO="${OCI_REPO:-keppel.global.cloud.sap/ccloud-ghcr-io-mirror/gardenlinux/gardenlinux-ccloud}"
 
-DASHED_GARDENLINUX_VERSION=${GARDENLINUX_VERSION//./-}
 # setup OCI_TAG, UKI_SHA and fetch UKI
-OCI_TAG=${OCI_TAG:-"$GARDENLINUX_VERSION.0-$VARIANT_ID-${DASHED_GARDENLINUX_VERSION}-$GARDENLINUX_COMMIT_ID"}
+OCI_TAG=${OCI_TAG:-"$GARDENLINUX_VERSION.0-$VARIANT_ID-$BUILD_TIMESTAMP-$GARDENLINUX_COMMIT_ID"}
 OCI_TAG=${OCI_TAG//_/-} # replace underscores with dashes
 UKI_SHA=$(oras manifest fetch "$OCI_REPO:${OCI_TAG}" | jq -r '.layers[] | select(.mediaType=="application/io.gardenlinux.uki") | .digest')
 oras blob fetch "$OCI_REPO@$UKI_SHA" -o "$esp_dir/EFI/Linux/uki.efi"

@@ -41,6 +41,14 @@ targets:
         test: true
         test-platform: false
         publish: false
+      - features:
+          - sci
+          - _iso 
+        arch: amd64
+        build: true
+        test: true
+        test-platform: false
+        publish: false
   # this is needed as bare_flavors step in build.yml is currently hard wired
   - name: bare
     category: container

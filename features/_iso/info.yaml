@@ -1,0 +1,6 @@
+description: "iso"
+type: flag
+features:
+  exclude:
+    - _selinux
+    - sap

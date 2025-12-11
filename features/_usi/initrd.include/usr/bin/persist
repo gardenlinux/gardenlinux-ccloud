@@ -94,6 +94,20 @@ if [ "$ENABLE_HUGEPAGE_SETUP" = "true" ]; then
   objcopy --add-section .cmdline=/tmp/cmdlinef --change-section-vma .cmdline=$(printf 0x%x $offs) $addon "$addon_dir/hugepages.addon.efi"
 fi
 
+# debug container
+DBG_CONTAINER_IMPORT="/sysroot/opt/dbgimage"
+DBG_CONTAINER_IMAGE_DUMP="debug.tar"
+DBG_CONTAINER_FILE="/sysroot/opt/dbgimage/image"
+
+mkdir -p "$DBG_CONTAINER_IMPORT"
+if [ -f "$DBG_CONTAINER_FILE" ]; then
+	oras backup --output "$DBG_CONTAINER_IMPORT/$DBG_CONTAINER_IMAGE_DUMP" "$(cat "$DBG_CONTAINER_FILE")"
+	cat "$DBG_CONTAINER_FILE" | cut -d: -f 1 > "$DBG_CONTAINER_IMPORT/$DBG_CONTAINER_IMAGE_DUMP.name"
+else
+	echo "no container image file providing, skipping..."
+fi
+
+
 # Network config generation
 if [[ -x /sysroot/opt/persist/network_up.sh ]]; then
 	chroot /sysroot /opt/persist/network_up.sh

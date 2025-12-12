@@ -1,0 +1,13 @@
+[Unit]
+Description=Import debug container image
+ConditionPathExists=|/opt/dbgimage/debug.tar
+ConditionFirstBoot=yes
+After=containerd.service
+Requires=containerd.service
+
+[Service]
+ExecStart=/bin/sh -c 'ctr image import --base-name "$(cat /opt/dbgimage/debug.tar.name)" /opt/dbgimage/debug.tar && rm -f /opt/dbgimage/debug.tar && rm -f /opt/dbgimage/debug.tar.name && rm -f /opt/dbgimage/image'
+Type=oneshot
+
+[Install]
+WantedBy=multi-user.target

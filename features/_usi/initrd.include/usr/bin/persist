@@ -104,7 +104,7 @@ if [ -f "$DBG_CONTAINER_FILE" ]; then
 	oras backup --output "$DBG_CONTAINER_IMPORT/$DBG_CONTAINER_IMAGE_DUMP" "$(cat "$DBG_CONTAINER_FILE")"
 	cat "$DBG_CONTAINER_FILE" | cut -d: -f 1 > "$DBG_CONTAINER_IMPORT/$DBG_CONTAINER_IMAGE_DUMP.name"
 else
-	echo "no container image file providing, skipping..."
+	echo "no container image file provided, skipping..."
 fi
 
 

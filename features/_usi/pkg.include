@@ -9,6 +9,5 @@ tpm2-tools
 yq
 gdisk
 binutils
-oras
 efibootmgr
 systemd-ukify

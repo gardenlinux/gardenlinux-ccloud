@@ -1,0 +1,5 @@
+# default presets for sci image
+disable virtchd-admin.socket
+disable virtchd-ro.socket
+disable virtchd.service
+disable virtchd.socket

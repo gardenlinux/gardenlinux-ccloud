@@ -102,7 +102,7 @@ DBG_CONTAINER_FILE="/sysroot/opt/dbgimage/image"
 mkdir -p "$DBG_CONTAINER_IMPORT"
 if [ -f "$DBG_CONTAINER_FILE" ]; then
 	oras backup --output "$DBG_CONTAINER_IMPORT/$DBG_CONTAINER_IMAGE_DUMP" "$(cat "$DBG_CONTAINER_FILE")"
-	cat "$DBG_CONTAINER_FILE" | cut -d: -f 1 > "$DBG_CONTAINER_IMPORT/$DBG_CONTAINER_IMAGE_DUMP.name"
+	cat "$DBG_CONTAINER_FILE" | awk -F':' '{print $1}' > "$DBG_CONTAINER_IMPORT/$DBG_CONTAINER_IMAGE_DUMP.name"
 else
 	echo "no container image file provided, skipping..."
 fi

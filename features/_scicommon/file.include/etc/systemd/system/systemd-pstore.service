@@ -1,0 +1,17 @@
+[Unit]
+Description=Platform Persistent Storage Archival
+Documentation=man:systemd-pstore(8)
+ConditionDirectoryNotEmpty=/sys/fs/pstore
+ConditionVirtualization=!container
+DefaultDependencies=no
+Conflicts=shutdown.target
+Before=sysinit.target shutdown.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/lib/systemd/systemd-pstore
+RemainAfterExit=yes
+StateDirectory=systemd/pstore
+
+[Install]
+WantedBy=sysinit.target

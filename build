@@ -1,1 +1,128 @@
-gardenlinux/build
+#!/usr/bin/env bash
+
+set -euo pipefail
+shopt -s nullglob
+
+exec 3>&1
+exec 1>&2
+
+#container_image=ghcr.io/gardenlinux/builder:d6d24ba1aec66889a2acab83aedcb00e869abfcd
+container_image=localhost/builder
+container_engine=podman
+target_dir=.build
+
+container_run_opts=(
+	--memory 4G
+	--security-opt seccomp=unconfined
+	--security-opt apparmor=unconfined
+	--security-opt label=disable
+	--read-only
+)
+
+container_cmd=()
+
+use_kms=0
+resolve_cname=0
+
+while [ $# -gt 0 ]; do
+	case "$1" in
+		--container-image)
+			container_image="$2"
+			shift 2
+			;;
+		--container-engine)
+			container_engine="$2"
+			shift 2
+			;;
+		--container-run-opts)
+			declare -a "container_run_opts=($2)"
+			shift 2
+			;;
+		--privileged)
+			container_run_opts+=(--privileged)
+			container_cmd=(--second-stage)
+			shift
+			;;
+		--kms)
+			use_kms=1
+			shift
+			;;
+		--print-container-image)
+			printf '%s\n' "$container_image" >&3
+			exit 0
+			;;
+		--resolve-cname)
+			resolve_cname=1
+			shift
+			;;
+		--target)
+			target_dir="$2"
+			shift 2
+			;;
+		*)
+			break
+			;;
+	esac
+done
+
+[ -d "$target_dir" ] || mkdir "$target_dir"
+
+container_mount_opts=(
+	-v "$PWD/keyring.gpg:/builder/keyring.gpg:ro"
+	-v "$(realpath "$target_dir"):/builder/.build"
+)
+
+for feature in features/*; do
+	if [ -d "$feature" ]; then
+		container_mount_opts+=(-v "$(realpath -- "$feature"):/builder/$feature:ro")
+	fi
+done
+
+if [ "$container_image" = localhost/builder ]; then
+	dir="$(dirname -- "$(realpath -- "${BASH_SOURCE[0]}")")"
+	"$container_engine" build -t "$container_image" "$dir"
+fi
+
+repo="$(./get_repo)"
+commit="$(./get_commit)"
+timestamp="$(./get_timestamp)"
+default_version="$(./get_version)"
+
+
+if [ "$resolve_cname" = 1 ]; then
+	arch="$("$container_engine" run --rm "${container_run_opts[@]}" "${container_mount_opts[@]}" "$container_image" dpkg --print-architecture)"
+	cname="$("$container_engine" run --rm "${container_run_opts[@]}" "${container_mount_opts[@]}" "$container_image" /builder/parse_features --feature-dir /builder/features --default-arch "$arch" --default-version "$default_version" --cname "$1")"
+	short_commit="$(head -c 8 <<< "$commit")"
+	echo "$cname-$short_commit" >&3
+	exit 0
+fi
+
+make_opts=(
+	REPO="$repo"
+	COMMIT="$commit"
+	TIMESTAMP="$timestamp"
+	DEFAULT_VERSION="$default_version"
+)
+
+if [ "$use_kms" = 1 ]; then
+	for e in AWS_DEFAULT_REGION AWS_REGION AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN; do
+		if [ -n "${!e-}" ]; then
+			make_opts+=("$e=${!e}")
+		fi
+	done
+fi
+
+# Default values which can be overriden via 'build.config' file
+tempfs_size=2G
+
+if [[ -f "$PWD"/build.config ]]; then
+	. "$PWD"/build.config
+fi
+
+make_opts+=("TEMPFS_SIZE=$tempfs_size")
+
+if [ -d cert ]; then
+	container_mount_opts+=(-v "$PWD/cert:/builder/cert:ro")
+fi
+
+"$container_engine" run --rm "${container_run_opts[@]}" "${container_mount_opts[@]}" "$container_image" ${container_cmd[@]+"${container_cmd[@]}"} fake_xattr make --no-print-directory -C /builder "${make_opts[@]}" "$@" >&3

@@ -87,7 +87,7 @@ jobs:
           DASHED_VERSION=${DASHED_VERSION//./-}
 
           echo "Adding additional tag: ${{ inputs.upload_version || inputs.version }}-${CNAME2}-${DASHED_VERSION}-${COMMIT_SHA_SHORT}"
-          oras tag ghcr.io/${{ github.repository }}:${{ inputs.version }}-${CNAME}-${{ matrix.arch }} ${{ inputs.upload_version || inputs.version }}.0-${CNAME2}-${DASHED_VERSION}-${COMMIT_SHA_SHORT}
+          oras tag ghcr.io/${{ github.repository }}:${{ inputs.version }}-${CNAME}-${{ matrix.arch }} ${{ inputs.upload_version || inputs.version }}-${CNAME2}-${DASHED_VERSION}-${COMMIT_SHA_SHORT}
       - uses: actions/cache/save@5a3ec84eff668545956fd18022155c47e93e2684 # pin@v4.2.3
         with:
           path: oci_manifest_entry_${{ env.CNAME }}.json

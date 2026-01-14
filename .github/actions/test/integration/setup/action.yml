@@ -78,6 +78,16 @@ runs:
               rm -f /tmp/cakey.pem
             fi
 
+            # Verify the certificate was created
+            echo "Checking if CA certificate exists:"
+            ls -la /etc/pki/CA/cacert.pem || echo "CA cert not found!"
+
+            # Set AppArmor to complain mode for libvirtd to allow PKI access
+            if command -v aa-complain &> /dev/null; then
+              echo "Setting AppArmor to complain mode for libvirtd"
+              aa-complain /usr/sbin/libvirtd || true
+            fi
+
             systemctl start libvirtd
 
             virsh pool-destroy default || true

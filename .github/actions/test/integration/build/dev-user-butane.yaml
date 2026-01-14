@@ -85,3 +85,10 @@ storage:
         kernel.core_pattern=|/usr/lib/systemd/systemd-coredump %P %u %g %s %t %c %h
         kernel.core_pipe_limit=16
         fs.suid_dumpable=2
+  # Dummy CA certificate for libvirt TLS (required since libvirt 11.10.0)
+  # Parent directories are created automatically by Ignition
+  - path: /etc/pki/CA/cacert.pem
+    mode: 0644
+    contents:
+      compression: ""
+      source: data:;base64,CA_CERT_BASE64_GOES_HERE

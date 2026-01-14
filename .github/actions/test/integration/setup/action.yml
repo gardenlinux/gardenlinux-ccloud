@@ -68,6 +68,16 @@ runs:
           # Set up libvirt storage pool and network
           scp $SSH_OPTS ./.github/actions/test/integration/setup/virbr-vm.xml "$USER@$IP:/opt/virbr-vm.xml"
           ssh $SSH_OPTS "$USER@$IP" << EOF
+            # Create PKI structure for libvirtd TLS
+            mkdir -p /etc/pki/CA /etc/pki/libvirt/private /etc/pki/qemu
+            if [ ! -f /etc/pki/CA/cacert.pem ]; then
+              openssl req -new -x509 -days 365 -nodes -sha256 \
+                -subj "/C=XX/ST=State/L=City/O=GardenLinux/CN=Test CA" \
+                -keyout /tmp/cakey.pem -out /etc/pki/CA/cacert.pem
+              chmod 0644 /etc/pki/CA/cacert.pem
+              rm -f /tmp/cakey.pem
+            fi
+
             systemctl start libvirtd
 
             virsh pool-destroy default || true

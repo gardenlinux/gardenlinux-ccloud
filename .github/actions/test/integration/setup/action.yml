@@ -68,6 +68,7 @@ runs:
           # Set up libvirt storage pool and network
           scp $SSH_OPTS ./.github/actions/test/integration/setup/virbr-vm.xml "$USER@$IP:/opt/virbr-vm.xml"
           ssh $SSH_OPTS "$USER@$IP" << EOF
+            set -x
             echo "=== DEBUG: Checking if Ignition created the CA certificate ==="
             echo "File exists check:"
             ls -la /etc/pki/CA/cacert.pem 2>&1 || echo "NOT FOUND"
@@ -80,10 +81,36 @@ runs:
               echo "Validating certificate:"
               openssl x509 -in /etc/pki/CA/cacert.pem -noout -subject 2>&1 || echo "INVALID CERT"
             fi
+            
             echo "=== DEBUG: Checking libvirt config ==="
-            grep -i "tls\|ca" /etc/libvirt/libvirtd.conf 2>&1 | head -10 || echo "No TLS config found"
-            echo "=== Starting libvirtd ==="
-            systemctl start libvirtd
+            echo "Full libvirtd.conf TLS settings:"
+            grep -i "tls\|ca\|cert" /etc/libvirt/libvirtd.conf 2>&1 || echo "No TLS config found"
+            
+            echo "=== DEBUG: libvirtd service status before reset ==="
+            systemctl status libvirtd.service --no-pager 2>&1 || true
+            systemctl status libvirtd.socket --no-pager 2>&1 || true
+            systemctl status libvirtd-tls.socket --no-pager 2>&1 || true
+            
+            echo "=== DEBUG: Resetting failed services ==="
+            systemctl reset-failed libvirtd.service libvirtd.socket libvirtd-tls.socket libvirtd-admin.socket libvirtd-ro.socket || true
+            
+            echo "=== DEBUG: libvirtd service status after reset ==="
+            systemctl status libvirtd.service --no-pager 2>&1 || true
+            
+            echo "=== DEBUG: Starting libvirtd ==="
+            systemctl start libvirtd 2>&1 || echo "FAILED TO START LIBVIRTD"
+            
+            echo "=== DEBUG: libvirtd service status after start ==="
+            systemctl status libvirtd.service --no-pager 2>&1 || true
+            
+            echo "=== DEBUG: Recent libvirtd journal entries ==="
+            journalctl -u libvirtd.service -n 30 --no-pager 2>&1 || true
+            
+            echo "=== DEBUG: Checking if libvirtd is running ==="
+            pgrep -a libvirtd || echo "libvirtd NOT RUNNING"
+            
+            echo "=== DEBUG: virsh connection test ==="
+            virsh version 2>&1 || echo "VIRSH CANNOT CONNECT"
 
             virsh pool-destroy default || true
             virsh pool-undefine default || true

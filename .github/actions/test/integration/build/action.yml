@@ -116,7 +116,13 @@ runs:
 
         rm -f "$RUNNER_TEMP/dummy-cakey.pem"
 
+        echo "=== DEBUG: Butane YAML after certificate injection ==="
+        grep -A20 "cacert.pem" ./.github/actions/test/integration/build/dev-user-butane.yaml
+        
         butane --pretty --strict ./.github/actions/test/integration/build/dev-user-butane.yaml > "/opt/${TAG}.ign"
+        
+        echo "=== DEBUG: Generated Ignition JSON (cacert section) ==="
+        jq '.storage.files[] | select(.path == "/etc/pki/CA/cacert.pem")' "/opt/${TAG}.ign"
 
     - name: Download ubuntu cloud image
       shell: bash

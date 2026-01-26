@@ -68,6 +68,21 @@ runs:
           # Set up libvirt storage pool and network
           scp $SSH_OPTS ./.github/actions/test/integration/setup/virbr-vm.xml "$USER@$IP:/opt/virbr-vm.xml"
           ssh $SSH_OPTS "$USER@$IP" << EOF
+            echo "=== DEBUG: Checking if Ignition created the CA certificate ==="
+            echo "File exists check:"
+            ls -la /etc/pki/CA/cacert.pem 2>&1 || echo "NOT FOUND"
+            echo "Directory structure:"
+            ls -la /etc/pki/ 2>&1 || echo "/etc/pki does not exist"
+            ls -la /etc/pki/CA/ 2>&1 || echo "/etc/pki/CA does not exist"
+            if [ -f /etc/pki/CA/cacert.pem ]; then
+              echo "Certificate content (first 3 lines):"
+              head -3 /etc/pki/CA/cacert.pem
+              echo "Validating certificate:"
+              openssl x509 -in /etc/pki/CA/cacert.pem -noout -subject 2>&1 || echo "INVALID CERT"
+            fi
+            echo "=== DEBUG: Checking libvirt config ==="
+            grep -i "tls\|ca" /etc/libvirt/libvirtd.conf 2>&1 | head -10 || echo "No TLS config found"
+            echo "=== Starting libvirtd ==="
             systemctl start libvirtd
 
             virsh pool-destroy default || true

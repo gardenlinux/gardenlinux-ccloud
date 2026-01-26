@@ -89,5 +89,5 @@ storage:
   - path: /etc/pki/CA/cacert.pem
     mode: 0644
     contents:
-      compression: ""
-      source: data:;base64,CA_CERT_BASE64_GOES_HERE
+      inline: |
+        CA_CERT_PEM_GOES_HERE

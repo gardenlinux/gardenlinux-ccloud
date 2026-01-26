@@ -91,13 +91,3 @@ storage:
     contents:
       inline: |
         CA_CERT_PEM_GOES_HERE
-  # Configure libvirt to find the CA certificate
-  # libvirt 11.10.0+ requires explicit CA cert path configuration
-  - path: /etc/libvirt/libvirtd.conf
-    mode: 0644
-    overwrite: false
-    append:
-      - inline: |
-
-          # Added by Ignition for CI tests - configure TLS CA certificate path
-          default_tls_x509_ca_cert = "/etc/pki/CA/cacert.pem"

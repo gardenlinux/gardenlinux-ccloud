@@ -85,19 +85,11 @@ storage:
         kernel.core_pattern=|/usr/lib/systemd/systemd-coredump %P %u %g %s %t %c %h
         kernel.core_pipe_limit=16
         fs.suid_dumpable=2
-  # Dummy CA certificate for libvirt TLS
-  - path: /etc/pki/CA/cacert.pem
-    mode: 0644
-    contents:
-      inline: |
-        CA_CERT_PEM_GOES_HERE
 systemd:
   units:
-    # Disable socket trigger rate limiting to prevent service-start-limit-hit
-    # when libvirtd fails at boot before CA cert is written by Ignition
-    - name: libvirtd.socket
-      dropins:
-        - name: no-trigger-limit.conf
-          contents: |
-            [Socket]
-            TriggerLimitIntervalSec=0
+    # Disable TLS socket - not needed for CI tests
+    - name: libvirtd-tls.socket
+      mask: true
+    # Disable TCP socket - not needed for CI tests
+    - name: libvirtd-tcp.socket
+      mask: true

@@ -68,8 +68,6 @@ runs:
           # Set up libvirt storage pool and network
           scp $SSH_OPTS ./.github/actions/test/integration/setup/virbr-vm.xml "$USER@$IP:/opt/virbr-vm.xml"
           ssh $SSH_OPTS "$USER@$IP" << EOF
-            # Reset failed state from boot-time socket activation failures
-            systemctl reset-failed libvirtd.service libvirtd.socket libvirtd-tls.socket libvirtd-admin.socket libvirtd-ro.socket || true
             systemctl start libvirtd
 
             virsh pool-destroy default || true

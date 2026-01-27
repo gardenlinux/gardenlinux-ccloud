@@ -91,3 +91,13 @@ storage:
     contents:
       inline: |
         CA_CERT_PEM_GOES_HERE
+systemd:
+  units:
+    # Disable socket trigger rate limiting to prevent service-start-limit-hit
+    # when libvirtd fails at boot before CA cert is written by Ignition
+    - name: libvirtd.socket
+      dropins:
+        - name: no-trigger-limit.conf
+          contents: |
+            [Socket]
+            TriggerLimitIntervalSec=0

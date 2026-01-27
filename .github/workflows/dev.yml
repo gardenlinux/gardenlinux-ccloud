@@ -36,13 +36,14 @@ jobs:
   build:
     needs: [set_version]
     if: ${{ github.event_name != 'pull_request' || github.event.action != 'closed' }}
-    uses: gardenlinux/gardenlinux/.github/workflows/build.yml@5282bd31155e6ce2dc6c1b62b72caf662e198f74
+    uses: gardenlinux/gardenlinux/.github/workflows/build.yml@b95e246b32358639578e32deb8623d633b110202
     with:
       version: ${{ needs.set_version.outputs.VERSION }}
       # to set target to "release" or "nightly" we need proper KMS secrets
       # have a look at gardenlinux/.github/workflows/github.mjs
       target: dev
       fail_fast: true
+      platform_test_build: false
     # secrets:
       # aws_region: ${{ secrets.AWS_REGION }}
       # aws_kms_role: ${{ secrets.KMS_SIGNING_IAM_ROLE }}

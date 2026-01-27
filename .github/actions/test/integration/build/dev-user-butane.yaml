@@ -85,3 +85,10 @@ storage:
         kernel.core_pattern=|/usr/lib/systemd/systemd-coredump %P %u %g %s %t %c %h
         kernel.core_pipe_limit=16
         fs.suid_dumpable=2
+# Disable libvirt sockets not required for CI tests
+systemd:
+  units:
+    - name: libvirtd-tls.socket
+      mask: true
+    - name: libvirtd-tcp.socket
+      mask: true

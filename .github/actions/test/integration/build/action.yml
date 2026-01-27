@@ -106,13 +106,6 @@ runs:
         sed -i "s|PASSWORD_GOES_HERE|$PASSWORD|g" ./.github/actions/test/integration/build/dev-user-butane.yaml
         sed -i "s|TAG_GOES_HERE|${{ inputs.image_tag }}|g" ./.github/actions/test/integration/build/dev-user-butane.yaml
 
-        openssl req -new -x509 -days 3650 -nodes -sha256 \
-          -subj "/C=XX/ST=State/L=City/O=GardenLinux/CN=Test CA" \
-          -keyout "$RUNNER_TEMP/dummy-cakey.pem" -out "$RUNNER_TEMP/dummy-cacert.pem"
-        CA_CERT_B64=$(base64 -w 0 "$RUNNER_TEMP/dummy-cacert.pem")
-        sed -i "s|CA_CERT_BASE64_GOES_HERE|$CA_CERT_B64|g" ./.github/actions/test/integration/build/dev-user-butane.yaml
-        rm -f "$RUNNER_TEMP/dummy-cakey.pem"
-
         butane --pretty --strict ./.github/actions/test/integration/build/dev-user-butane.yaml > "/opt/${TAG}.ign"
 
     - name: Download ubuntu cloud image

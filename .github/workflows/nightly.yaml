@@ -23,7 +23,7 @@ jobs:
     with:
       version: ${{ inputs.version || 'now' }}
       # to set target to "release" or "nightly" we need proper KMS secrets
-      # have a look at gardenlinux/.github/workflows/github.mjs 
+      # have a look at gardenlinux/.github/workflows/github.mjs
       target: dev
       fail_fast: true
       platform_test_build: false
@@ -32,6 +32,25 @@ jobs:
       # aws_kms_role: ${{ secrets.KMS_SIGNING_IAM_ROLE }}
       # aws_oidc_session: ${{ secrets.AWS_OIDC_SESSION }}
       # secureboot_db_kms_arn: ${{ secrets.SECUREBOOT_DB_KMS_ARN }}
+  meta:
+    name: Compute image metadata
+    needs: [build]
+    runs-on: ubuntu-latest
+    outputs:
+      VERSION: ${{ needs.build.outputs.version }}
+      DASHED_VERSION: ${{ steps.meta.outputs.dashed_version }}
+      COMMIT_SHA: ${{ steps.meta.outputs.sha }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Derive image metadata
+        id: meta
+        run: |
+          SHA="${GITHUB_SHA::8}"
+          echo "sha=${SHA}" >> $GITHUB_OUTPUT
+          VERSION="${{ needs.build.outputs.version }}"
+          DASHED_VERSION=${VERSION//./-}
+          echo "dashed_version=${DASHED_VERSION}" >> $GITHUB_OUTPUT
   upload_oci:
     name: Run glcli to publish to OCI
     needs: [build]
@@ -40,3 +59,9 @@ jobs:
     uses: ./.github/workflows/upload_oci.yml
     with:
       version: ${{ needs.build.outputs.version }}
+  test:
+    name: Test nightly image
+    needs: [meta, upload_oci]
+    uses: ./.github/workflows/test.yml
+    with:
+      image_tag: "${{ needs.meta.outputs.VERSION }}-metal-sci-usi-amd64-${{ needs.meta.outputs.DASHED_VERSION }}-${{ needs.meta.outputs.COMMIT_SHA }}"

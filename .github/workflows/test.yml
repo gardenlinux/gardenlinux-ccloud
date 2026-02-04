@@ -1,19 +1,11 @@
 name: test hypervisor capabilities
 on:
-  push:
-    branches:
-      - feat/ci-test-cloud-hypervisor
-  workflow_run:
-    workflows:
-      - nightly
-    types:
-      - completed
   workflow_dispatch:
     inputs:
       image_tag:
         description: "Image tag to test (must be usi-sci)"
         type: string
-        default: ""
+        required: true
   workflow_call:
     inputs:
       image_tag:
@@ -27,19 +19,30 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Install oras
+        uses: oras-project/setup-oras@v1
+        with:
+          version: 1.2.2
+      - name: Validate image tag
+        run: |
+          if [ -z "${{ inputs.image_tag }}" ]; then
+            echo "Error: image_tag is required"
+            exit 1
+          fi
+
+          echo "Verifying image ${{ inputs.image_tag }} exists in GHCR..."
+          if ! digest=$(oras resolve ghcr.io/gardenlinux/gardenlinux-ccloud:${{ inputs.image_tag }} 2>&1); then
+            echo "Error: Image tag '${{ inputs.image_tag }}' not found in ghcr.io/gardenlinux/gardenlinux-ccloud"
+            echo "Resolve output: $digest"
+            exit 1
+          fi
+          echo "Image tag present in GHCR (digest: ${digest:0:12}...)"
       - name: Install Dependencies
         uses: ./.github/actions/test/integration/dependencies
-      - name: Obtain newest Tag from GHCR
-        id: fetch_tag
-        if: ${{ inputs.image_tag == '' || github.event_name == 'workflow_run' || github.event_name == 'push' }}
-        run: |
-          latest_tag=$(oras repo tags ghcr.io/gardenlinux/gardenlinux-ccloud | grep -E '^[0-9]+\.[0-9]+\.[0-9]+-metal-sci-usi-amd64-[0-9]+-[0-9]+-[0-9]-[0-9a-f]{8}$' | sort -r | head -n 1)
-          echo $latest_tag
-          echo "latest_tag=$latest_tag" >> $GITHUB_ENV
       - name: Build
         uses: ./.github/actions/test/integration/build
         with:
-          image_tag: ${{ env.latest_tag || inputs.image_tag }}
+          image_tag: ${{ inputs.image_tag }}
       - name: Setup
         uses: ./.github/actions/test/integration/setup
       - name: Test QEMU

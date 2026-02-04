@@ -54,16 +54,18 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       UPLOAD_VERSION: ${{ steps.meta.outputs.upload_version }}
-      COMMIT_SHA: ${{ steps.meta.outputs.sha }}
+      image_tag: ${{ steps.meta.outputs.image_tag }}
     steps:
-      - name: Derive image version
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Compute image metadata
         id: meta
         run: |
           PR_NUMBER=${{ github.event.pull_request.number }}
           UPLOAD_VERSION="pr-${PR_NUMBER}"
           echo "upload_version=${UPLOAD_VERSION}" >> $GITHUB_OUTPUT
-          SHA="${GITHUB_SHA::8}"
-          echo "sha=${SHA}" >> $GITHUB_OUTPUT
+          IMAGE_TAG=$(.github/scripts/compute-image-tag.sh "${UPLOAD_VERSION}")
+          echo "image_tag=${IMAGE_TAG}" >> $GITHUB_OUTPUT
 
   upload:
     name: Upload PR image to OCI
@@ -82,7 +84,7 @@ jobs:
     if: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.event.action != 'closed' }}
     uses: ./.github/workflows/test.yml
     with:
-      image_tag: "${{ needs.meta.outputs.UPLOAD_VERSION }}-metal-sci-usi-amd64-${{ needs.meta.outputs.UPLOAD_VERSION }}-${{ needs.meta.outputs.COMMIT_SHA }}"
+      image_tag: ${{ needs.meta.outputs.image_tag }}
 
   cleanup_images:
     name: Cleanup PR images

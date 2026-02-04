@@ -26,7 +26,6 @@ jobs:
       # have a look at gardenlinux/.github/workflows/github.mjs 
       target: dev
       fail_fast: true
-      platform_test_build: false
     # secrets:
       # aws_region: ${{ secrets.AWS_REGION }}
       # aws_kms_role: ${{ secrets.KMS_SIGNING_IAM_ROLE }}

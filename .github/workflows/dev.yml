@@ -11,6 +11,13 @@ on:
     paths-ignore:
       - "**/README.md"
       - "docs/**"
+
+# Cancel any in-progress PR workflow runs when PR is closed
+# Used to ensure cleanup runs after any PR build are uploaded (or aborts before the upload)
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event.action == 'closed' }}
+
 jobs:
   set_version:
     if: ${{ github.event_name != 'pull_request' || github.event.action != 'closed' }}

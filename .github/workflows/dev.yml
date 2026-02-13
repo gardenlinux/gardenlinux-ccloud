@@ -11,6 +11,13 @@ on:
     paths-ignore:
       - "**/README.md"
       - "docs/**"
+
+# Cancel any in-progress PR workflow runs when PR is closed
+# Used to ensure cleanup runs after any PR build are uploaded (or aborts before the upload)
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event.action == 'closed' }}
+
 jobs:
   set_version:
     if: ${{ github.event_name != 'pull_request' || github.event.action != 'closed' }}
@@ -91,6 +98,9 @@ jobs:
     if: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.event.action == 'closed' }}
     runs-on: ubuntu-latest
     steps:
+      - name: Wait for cancelled workflow runs to complete
+        run: sleep 30
+
       - name: Cleanup OCI images via GitHub API
         run: |
           PR_NUMBER=${{ github.event.pull_request.number }}

@@ -6,6 +6,11 @@ if ! disk_dev=$(/usr/bin/detect_disk); then
 	exit 1
 fi
 
+if [[ ! -b "$disk_dev" ]]; then
+  echo "Device $disk_dev not found, exiting"
+  exit 1
+fi
+
 # clean up the disk
 sgdisk -Z "$disk_dev"
 sgdisk -o "$disk_dev"

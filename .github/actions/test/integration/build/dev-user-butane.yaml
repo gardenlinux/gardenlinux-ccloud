@@ -37,12 +37,6 @@ storage:
         # custom
         192.168.122.2 hv1
         192.168.122.3 hv2
-  - path: /opt/persist/root-hints.yaml
-    mode: 0644
-    contents:
-      inline: |
-        hints:
-          - size: lt 500G
   # turn off hugepages, not required for this test
   # also SIGNIFICANTLY reduces test runtime
   - path: /opt/persist/hugepages.env

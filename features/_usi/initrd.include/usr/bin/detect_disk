@@ -4,10 +4,6 @@ set -Eeuo pipefail
 
 ROOT_HINTS_FILE="/sysroot/opt/persist/root-hints.yaml"
 
-if ! [[ -f $ROOT_HINTS_FILE ]]; then
-	echo "no root-hints.yaml provided, error"
-	exit 1
-fi
 if kname=$(/usr/bin/root-hints $ROOT_HINTS_FILE); then
 	echo "/dev/${kname}"
 else

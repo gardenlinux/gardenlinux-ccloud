@@ -15,7 +15,8 @@ runs:
     - name: Copy ignition file
       shell: bash
       run: |
-        sudo cp "/opt/${TAG}.ign" /var/lib/libvirt/images/hv.ign
+        sudo cp "/opt/${TAG}-hv1.ign" /var/lib/libvirt/images/HV1.ign
+        sudo cp "/opt/${TAG}-hv2.ign" /var/lib/libvirt/images/HV2.ign
 
     - name: Create HyperVisor 1
       shell: bash

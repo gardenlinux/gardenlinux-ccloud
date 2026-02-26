@@ -2,12 +2,17 @@
 
 set -Eeuo pipefail
 
+# setup error trap
+trap 'err "Error occurred at line $LINENO while executing: $BASH_COMMAND"' ERR
+
 function yqroot() {
 	cat "$1" | chroot /sysroot /usr/bin/yq -c '.hints | .[]'
 }
 
 function err() {
 	echo "$@" 1>&2
+
+  lsblk -bOJ | jq
 }
 
 function filter() {
@@ -27,25 +32,94 @@ function filter() {
 	fi
 	if [[ $val =~ ^[0-9]+[KMGT]+$ ]]; then
 		val=$(echo "$val" | numfmt --from=iec)
-		echo "and ${col^^} $op ${val}"
+		echo "${col^^} $op ${val}"
 	else
-		echo "and ${col^^} $op \"${val}\""
+		echo "${col^^} $op \"${val}\""
 	fi
-
 }
+
+function blockdevicesize() {
+  local kname="$1"
+  lsblk -bOJ | jq --arg kname "$kname" -r '.blockdevices.[] | select(.kname == $kname).size'
+}
+
+udevadm settle
 
 yamlFile="$1"
 
+esp_disk=""
+if [ -e "/dev/disk/by-label/ESP" ]; then
+	esp_partition=$(basename "$(readlink -f /dev/disk/by-label/ESP)")
+  esp_disk=$(basename "$(readlink -f "/sys/class/block/$esp_partition/..")")
+fi
+
+# TODO: likely go rather with device uuid or alike
 #if dev=$(yq -e .dev "$yamlFile" 2> /dev/null); then
 #	echo "$dev"
 #	exit 0
 #fi
 
-flsblk="TYPE eq \"disk\""
-while IFS= read -r r; do
-	f=$(filter "$r")
-	flsblk="$flsblk $f"
-done < <(yqroot "$yamlFile" )
+declare -a flsblk=()
+# check if yaml file exists and is valid, if so, use it to build the filter for lsblk
+if [ -f "$yamlFile" ] && yq -e . "$yamlFile" >/dev/null 2>&1; then
+	while IFS= read -r r; do
+		flsblk+=("$(filter "$r")")
+	done < <(yqroot "$yamlFile")
+fi
 
-#echo "$flsblk"
-lsblk --filter "$flsblk" --noheadings -o kname
+LSBLK_JSON=""
+
+function join {
+	local SEPARATOR="$1"
+	shift
+	printf "%s${SEPARATOR}" "$@" | sed --unbuffered "s/${SEPARATOR}$//"
+}
+
+# if flsblk contains elements, we join them by 'and' and use the filter with lsblk
+if [ ${#flsblk[@]} -gt 0 ]; then
+	flsfilter=$(join " and " "${flsblk[@]}")
+	echo "Using filter: $flsfilter" 1>&2
+	LSBLK_JSON=$(lsblk --sort size --exclude 1,2,3,4,7,11 --filter "$flsfilter" -OJ)
+else
+	# no hints, hence we choose the smallest disk we find. we exclude ram disk,
+	# floppy, ide, dynamically allocated, loopback and scsi cd-rom devices
+	LSBLK_JSON=$(lsblk --sort size --exclude 1,2,3,4,7,11 -OJ)
+fi
+
+# from the resulting list of disks we pick the first disk that are writeable
+kname=$(echo "$LSBLK_JSON" | jq -r '[.blockdevices.[]|select(.type? == "disk" and .ro? == false)][0].kname // ""')
+
+# check which disk to use.
+# 1. if kname is empty:
+#    * we check if we have an esp_disk, if so we use it
+#    * otherwise we fail
+# 2. if kname is not empty:
+#    * we check if we have an esp_disk, if not we use
+#    * kname, otherwise we check if they are the same, if not we fail, otherwise we use kname/esp_disk
+if [ -z "$kname" ]; then
+	if [ -z "$esp_disk" ]; then
+		err "No suitable disk found"
+		exit 1
+	fi
+	echo "Warning: No suitable disk found, falling back to ESP disk ${esp_disk}" 1>&2
+	echo "$esp_disk"
+else
+	if [ -z "$esp_disk" ]; then
+		# no esp_disk using kname
+		echo "$kname"
+    exit 0
+	fi
+
+	if [ "$kname" != "$esp_disk" ]; then
+    # check if desvice size are the same
+    err "Error: Found disk ${kname} does not match ESP disk ${esp_disk}." 1>&2
+    kname_size=$(blockdevicesize "$kname")
+    esp_disk_size=$(blockdevicesize "$esp_disk")
+    if [ "$kname_size" != "$esp_disk_size" ]; then
+      err "Error: Found disk ${kname} size ${kname_size} does not match ESP disk ${esp_disk} size ${esp_disk_size}." 1>&2
+      exit 1
+    fi
+	fi
+	# kname == esp_disk or esp_disk has similar size to kname
+	echo "$esp_disk"
+fi

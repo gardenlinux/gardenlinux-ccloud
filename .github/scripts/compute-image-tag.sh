@@ -9,7 +9,7 @@
 #
 # Arguments:
 #   version - The version for the tag (e.g., "1877.10.1", "pr-123")
-#   flavor  - The image flavor (e.g., "metal-sci-usi-amd64"). Defaults to "metal-sci-usi-amd64".
+#   flavor  - The image flavor (e.g., "baremetal-sci-usi-amd64"). Defaults to "baremetal-sci-usi-amd64".
 #
 # Environment:
 #   GITHUB_SHA - Git commit SHA (required, set automatically by GitHub Actions)
@@ -22,15 +22,15 @@
 #
 # Examples:
 #   ./compute-image-tag.sh "1877.10.1"
-#   # Output: 1877.10.1-metal-sci-usi-amd64-1877-10-1-abcd1234
+#   # Output: 1877.10.1-baremetal-sci-usi-amd64-1877-10-1-abcd1234
 #
-#   ./compute-image-tag.sh "pr-123" "metal-capi-amd64"
-#   # Output: pr-123-metal-capi-amd64-pr-123-abcd1234
+#   ./compute-image-tag.sh "pr-123" "baremetal-capi-amd64"
+#   # Output: pr-123-baremetal-capi-amd64-pr-123-abcd1234
 
 set -euo pipefail
 
 VERSION="${1:?Error: VERSION argument required}"
-FLAVOR="${2:-metal-sci-usi-amd64}"
+FLAVOR="${2:-baremetal-sci-usi-amd64}"
 
 if [ -z "${GITHUB_SHA:-}" ]; then
     echo "Error: GITHUB_SHA environment variable is required" >&2

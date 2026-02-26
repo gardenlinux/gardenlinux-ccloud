@@ -42,7 +42,7 @@ jobs:
   build:
     needs: [set_version]
     if: ${{ github.event_name != 'pull_request' || github.event.action != 'closed' }}
-    uses: gardenlinux/gardenlinux/.github/workflows/build.yml@19d89d573a9c05266f3db9233f4d68aaa131ce12
+    uses: gardenlinux/gardenlinux/.github/workflows/build.yml@36078a576d0767433423289f2fa217b96cd951c9
     with:
       version: ${{ needs.set_version.outputs.VERSION }}
       # to set target to "release" or "nightly" we need proper KMS secrets
@@ -82,7 +82,7 @@ jobs:
     with:
       version: ${{ needs.set_version.outputs.VERSION }}
       upload_version: ${{ needs.meta.outputs.UPLOAD_VERSION }}
-      flavor_filter: '--include-only "metal-sci_usi-amd64"'
+      flavor_filter: '--include-only "baremetal-sci_usi-amd64"'
     secrets: inherit
 
   test:

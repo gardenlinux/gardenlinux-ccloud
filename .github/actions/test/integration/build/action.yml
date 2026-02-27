@@ -99,14 +99,21 @@ runs:
         chmod 600 /opt/ssh_host_ed25519_key
         SSH_KEY=$(cat /opt/ssh_host_ed25519_key.pub)
         echo "SSH_KEY=$SSH_KEY" >> $GITHUB_ENV
-        sed -i "s|SSH_KEY_GOES_HERE|$SSH_KEY|g" ./.github/actions/test/integration/build/dev-user-butane.yaml
+        cp ./.github/actions/test/integration/build/dev-user-butane.yaml ./.github/actions/test/integration/build/dev-user-butane-hv1.yaml
+        yq '.storage.files += load("./.github/actions/test/integration/build/root-hints.yaml")' ./.github/actions/test/integration/build/dev-user-butane.yaml > ./.github/actions/test/integration/build/dev-user-butane-hv2.yaml
+
+        sed -i "s|SSH_KEY_GOES_HERE|$SSH_KEY|g" ./.github/actions/test/integration/build/dev-user-butane-hv1.yaml
+        sed -i "s|SSH_KEY_GOES_HERE|$SSH_KEY|g" ./.github/actions/test/integration/build/dev-user-butane-hv2.yaml
 
         PASSWORD=$(openssl passwd "password")
         echo "PASSWORD=$PASSWORD" >> $GITHUB_ENV
-        sed -i "s|PASSWORD_GOES_HERE|$PASSWORD|g" ./.github/actions/test/integration/build/dev-user-butane.yaml
-        sed -i "s|TAG_GOES_HERE|${{ inputs.image_tag }}|g" ./.github/actions/test/integration/build/dev-user-butane.yaml
+        sed -i "s|PASSWORD_GOES_HERE|$PASSWORD|g" ./.github/actions/test/integration/build/dev-user-butane-hv1.yaml
+        sed -i "s|PASSWORD_GOES_HERE|$PASSWORD|g" ./.github/actions/test/integration/build/dev-user-butane-hv2.yaml
+        sed -i "s|TAG_GOES_HERE|${{ inputs.image_tag }}|g" ./.github/actions/test/integration/build/dev-user-butane-hv1.yaml
+        sed -i "s|TAG_GOES_HERE|${{ inputs.image_tag }}|g" ./.github/actions/test/integration/build/dev-user-butane-hv2.yaml
 
-        butane --pretty --strict ./.github/actions/test/integration/build/dev-user-butane.yaml > "/opt/${TAG}.ign"
+        butane --pretty --strict ./.github/actions/test/integration/build/dev-user-butane-hv1.yaml > "/opt/${TAG}-hv1.ign"
+        butane --pretty --strict ./.github/actions/test/integration/build/dev-user-butane-hv2.yaml > "/opt/${TAG}-hv2.ign"
 
     - name: Download ubuntu cloud image
       shell: bash

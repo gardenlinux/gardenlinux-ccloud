@@ -27,25 +27,46 @@ function filter() {
 	fi
 	if [[ $val =~ ^[0-9]+[KMGT]+$ ]]; then
 		val=$(echo "$val" | numfmt --from=iec)
-		echo "and ${col^^} $op ${val}"
+		echo "${col^^} $op ${val}"
 	else
-		echo "and ${col^^} $op \"${val}\""
+		echo "${col^^} $op \"${val}\""
 	fi
-
 }
 
 yamlFile="$1"
 
+# TODO: likely go rather with device uuid or alike
 #if dev=$(yq -e .dev "$yamlFile" 2> /dev/null); then
 #	echo "$dev"
 #	exit 0
 #fi
 
-flsblk="TYPE eq \"disk\""
-while IFS= read -r r; do
-	f=$(filter "$r")
-	flsblk="$flsblk $f"
-done < <(yqroot "$yamlFile" )
+declare -a flsblk=()
+# check if yaml file exists and is valid, if so, use it to build the filter for lsblk
+if [ -f "$yamlFile" ] && yq -e . "$yamlFile" >/dev/null 2>&1; then
+	while IFS= read -r r; do
+		flsblk+=("$(filter "$r")")
+	done < <(yqroot "$yamlFile")
+fi
 
-#echo "$flsblk"
-lsblk --filter "$flsblk" --noheadings -o kname
+LSBLK_JSON=""
+
+function join {
+	local SEPARATOR="$1"
+	shift
+	printf "%s${SEPARATOR}" "$@" | sed --unbuffered "s/${SEPARATOR}$//"
+}
+
+# if flsblk contains elements, we join them by 'and' and use the filter with lsblk
+if [ ${#flsblk[@]} -gt 0 ]; then
+	flsfilter=$(join " and " "${flsblk[@]}")
+	echo "Using filter: $flsfilter" 1>&2
+	LSBLK_JSON=$(lsblk --sort size --exclude 1,2,3,4,7,11 --filter "$flsfilter" -OJ)
+else
+	# no hints, hence we choose the smallest disk we find. we exclude ram disk,
+	# floppy, ide, dynamically allocated, loopback and scsi cd-rom devices
+	LSBLK_JSON=$(lsblk --sort size --exclude 1,2,3,4,7,11 -OJ)
+fi
+
+# from the resulting list of disks we pick the first disk that are writeable
+echo "$LSBLK_JSON" | jq -r '[.blockdevices.[]|select(.type? == "disk" and .ro? == false)][0].kname // ""'

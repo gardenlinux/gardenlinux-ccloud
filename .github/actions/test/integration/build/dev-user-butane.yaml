@@ -86,10 +86,3 @@ systemd:
       mask: true
     - name: libvirtd-tcp.socket
       mask: true
-
-    - name: virt-secret-init-encryption.service
-      dropins:
-        - name: create-dir.conf
-          contents: |
-            [Service]
-            ExecStartPre=/usr/bin/mkdir -p /var/lib/libvirt/secrets

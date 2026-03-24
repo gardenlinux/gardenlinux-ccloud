@@ -138,7 +138,8 @@ jobs:
           mkdir manifests
           mv oci_manifest_entry_${CNAME}.json manifests/
 
-          gl-oci update-index \
-            --container "ghcr.io/${{ github.repository }}" \
-            --version ${{ inputs.upload_version || inputs.version }} \
+          gl-oci push-index-from-directory \
+            --index "ghcr.io/${{ github.repository }}" \
+            --index-tag ${{ inputs.upload_version || inputs.version }} \
             --manifest_folder manifests
+            

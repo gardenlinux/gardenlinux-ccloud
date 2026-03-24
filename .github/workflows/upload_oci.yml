@@ -14,7 +14,7 @@ on:
 jobs:
   generate_matrix_publish:
     name: Generate flavors matrix to publish
-    uses: gardenlinux/gardenlinux/.github/workflows/build_flavors_matrix.yml@40e7dfa820cb8bd5e0317779f818d31464c18c63
+    uses: gardenlinux/gardenlinux/.github/workflows/build_flavors_matrix.yml@81e502e76193219aa54365ff23e3de619902a39b # pin@1877.13
     with:
       flags: '${{ inputs.flavor_filter }} --no-arch --json-by-arch --build --test'
   upload_gl_artifacts:
@@ -138,7 +138,7 @@ jobs:
           mkdir manifests
           mv oci_manifest_entry_${CNAME}.json manifests/
 
-          gl-oci update-index \
-            --container "ghcr.io/${{ github.repository }}" \
-            --version ${{ inputs.upload_version || inputs.version }} \
+          gl-oci push-index-from-directory \
+            --index "ghcr.io/${{ github.repository }}" \
+            --index-tag ${{ inputs.upload_version || inputs.version }} \
             --manifest_folder manifests

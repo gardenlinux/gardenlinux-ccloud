@@ -142,4 +142,3 @@ jobs:
             --index "ghcr.io/${{ github.repository }}" \
             --index-tag ${{ inputs.upload_version || inputs.version }} \
             --manifest_folder manifests
-            

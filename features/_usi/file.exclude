@@ -6,3 +6,8 @@
 #/opt/{,.}*
 #/home/{,.}*
 /root/{,.}*
+/etc/cron.daily/apt-compat
+/etc/cron.daily/dpkg
+/etc/cron.daily/quota
+/etc/cron.monthly/update-pciids
+/etc/cron.monthly/update-usbids

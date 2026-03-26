@@ -1,2 +1,2 @@
 # default presets for sci image
-disable ipmievd
+disable ipmievd.service

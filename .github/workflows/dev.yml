@@ -39,7 +39,7 @@ jobs:
   build:
     needs: [set_version]
     if: ${{ github.event_name != 'pull_request' || github.event.action != 'closed' }}
-    uses: gardenlinux/gardenlinux/.github/workflows/build.yml@81e502e76193219aa54365ff23e3de619902a39b
+    uses: gardenlinux/gardenlinux/.github/workflows/build.yml@30044208a44ce0ca73013b5cb18a7f15153ee18b
     with:
       version: ${{ needs.set_version.outputs.VERSION }}
       # to set target to "release" or "nightly" we need proper KMS secrets

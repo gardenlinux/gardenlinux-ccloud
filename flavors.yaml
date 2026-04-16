@@ -1,5 +1,5 @@
 targets:
-  - name: metal 
+  - name: metal
     category: baremetal
     flavors:
       - features:
@@ -43,7 +43,7 @@ targets:
         publish: false
       - features:
           - sci
-          - _iso 
+          - _iso
         arch: amd64
         build: true
         test: true

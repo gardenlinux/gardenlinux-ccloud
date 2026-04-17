@@ -1,0 +1,6 @@
+- path: /opt/persist/root-hints.yaml
+  mode: 0644
+  contents:
+    inline: |
+      hints:
+        - size: lt 500G

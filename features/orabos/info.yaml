@@ -1,5 +1,0 @@
-description: "ORA Baremetal OS"
-type: element
-features:
-  include: 
-    - sci

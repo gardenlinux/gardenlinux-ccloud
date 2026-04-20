@@ -1,3 +1,0 @@
-# We manage it "statically" via ignition/cloud-init
-# and the service conflicts with it.
-disable dhcpcd.service

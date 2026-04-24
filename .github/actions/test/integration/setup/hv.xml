@@ -32,6 +32,6 @@
     </devices>
     <qemu:commandline>
         <qemu:arg value='-fw_cfg' />
-        <qemu:arg value='name=opt/com.coreos/config,file=/var/lib/libvirt/images/hv.ign' />
+        <qemu:arg value='name=opt/com.coreos/config,file=/var/lib/libvirt/images/HV_NAME_GOES_HERE.ign' />
     </qemu:commandline>
 </domain>

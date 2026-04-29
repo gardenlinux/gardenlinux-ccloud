@@ -1,9 +1,0 @@
-#!/usr/bin/env bash
-
-set -eufo pipefail
-
-rootfs="$1"
-
-# the containerd package (or some dependency) creates a link
-# The calico pod though wants to create there some folder and fails thanks to that
-rm -f $rootfs/opt/cni/bin

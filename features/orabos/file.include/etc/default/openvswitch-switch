@@ -1,4 +1,0 @@
-# A compromise: Debian defaults apparently to root as user
-# but we need the openvswitch group. Maintaining a non-root
-# openvswitch user might spell trouble down the line
-OVS_CTL_OPTS="--ovs-user=root:openvswitch"

@@ -74,6 +74,14 @@ jobs:
           IMAGE_TAG=$(.github/scripts/compute-image-tag.sh "${UPLOAD_VERSION}")
           echo "image_tag=${IMAGE_TAG}" >> $GITHUB_OUTPUT
 
+  test_qemu:
+    name: QEMU / chroot tests
+    needs: [build]
+    if: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.event.action != 'closed' }}
+    uses: ./.github/workflows/test_qemu.yml
+    permissions:
+      actions: write
+
   test:
     name: Test PR image
     needs: [set_version, meta, build]
@@ -119,7 +127,7 @@ jobs:
 
   upload:
     name: Upload PR image to OCI
-    needs: [build, meta, set_version, test]
+    needs: [build, meta, set_version, test, test_qemu]
     if: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.event.action != 'closed' }}
     uses: ./.github/workflows/upload_oci.yml
     with:

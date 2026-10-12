@@ -4,6 +4,10 @@ inputs:
   image_tag:
     description: "Image tag to use for the build"
     required: true
+  uki_path:
+    description: "Optional local path to a pre-downloaded UKI file. If set, skip GHCR pull."
+    required: false
+    default: ""
 runs:
   using: "composite"
   steps:
@@ -22,6 +26,7 @@ runs:
         echo "DISK_SIZE=$DISK_SIZE" >> $GITHUB_ENV
 
     - name: Pull ORAS artifacts
+      if: ${{ inputs.uki_path == '' }}
       shell: bash
       run: |
         # oras manifest fetch in v1.2.2 has content negotiation issues with GHCR.
@@ -41,6 +46,18 @@ runs:
         echo "UKI size: $UKI_SIZE bytes"
         if [ "$UKI_SIZE" -eq 0 ]; then
           echo "::error::UKI blob is empty (digest: $UKI_SHA). The OCI artifact was built with an empty UKI — check the upstream build for version=today package issues."
+          exit 1
+        fi
+
+    - name: Use local UKI artifact
+      if: ${{ inputs.uki_path != '' }}
+      shell: bash
+      run: |
+        cp "${{ inputs.uki_path }}" "$RUNNER_TEMP/$TAG.uki"
+        UKI_SIZE=$(stat -c%s "$RUNNER_TEMP/$TAG.uki")
+        echo "Local UKI size: $UKI_SIZE bytes"
+        if [ "$UKI_SIZE" -eq 0 ]; then
+          echo "::error::Local UKI file is empty: ${{ inputs.uki_path }}"
           exit 1
         fi
 

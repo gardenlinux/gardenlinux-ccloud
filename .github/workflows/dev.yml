@@ -74,9 +74,52 @@ jobs:
           IMAGE_TAG=$(.github/scripts/compute-image-tag.sh "${UPLOAD_VERSION}")
           echo "image_tag=${IMAGE_TAG}" >> $GITHUB_OUTPUT
 
+  test:
+    name: Test PR image
+    needs: [set_version, meta, build]
+    if: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.event.action != 'closed' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Download build artifact
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: build-baremetal-sci_usi-amd64
+      - name: Extract UKI from build artifact
+        id: extract_uki
+        run: |
+          CNAME=$(ls *.tar.gz | head -1 | sed 's/.tar.gz//')
+          mkdir -p extracted
+          tar -C extracted -xzf "$CNAME.tar.gz"
+          UKI_PATH=$(find extracted -name "*.efi" | head -1)
+          if [ -z "$UKI_PATH" ]; then
+            echo "::error::No .efi UKI file found in build artifact"
+            ls -la extracted/ || true
+            exit 1
+          fi
+          echo "Found UKI at: $UKI_PATH"
+          echo "uki_path=$UKI_PATH" >> $GITHUB_OUTPUT
+      - name: Install Dependencies
+        uses: ./.github/actions/test/integration/dependencies
+      - name: Build test environment
+        uses: ./.github/actions/test/integration/build
+        with:
+          image_tag: ${{ needs.meta.outputs.image_tag }}
+          uki_path: ${{ steps.extract_uki.outputs.uki_path }}
+      - name: Setup
+        uses: ./.github/actions/test/integration/setup
+      - name: Test QEMU
+        uses: ./.github/actions/test/integration/test/qemu
+      - name: Test CloudHypervisor
+        uses: ./.github/actions/test/integration/test/cloudhypervisor
+      - name: Collect Debug Logs
+        if: always()
+        uses: ./.github/actions/test/integration/collect-logs
+
   upload:
     name: Upload PR image to OCI
-    needs: [build, meta, set_version]
+    needs: [build, meta, set_version, test]
     if: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.event.action != 'closed' }}
     uses: ./.github/workflows/upload_oci.yml
     with:
@@ -84,14 +127,6 @@ jobs:
       upload_version: ${{ needs.meta.outputs.UPLOAD_VERSION }}
       flavor_filter: '--include-only "baremetal-sci_usi-amd64"'
     secrets: inherit
-
-  test:
-    name: Test PR image
-    needs: [set_version, meta, upload]
-    if: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.event.action != 'closed' }}
-    uses: ./.github/workflows/test.yml
-    with:
-      image_tag: ${{ needs.meta.outputs.image_tag }}
 
   cleanup_images:
     name: Cleanup PR images

@@ -92,9 +92,9 @@ jobs:
           CNAME=$(ls *.tar.gz | head -1 | sed 's/.tar.gz//')
           mkdir -p extracted
           tar -C extracted -xzf "$CNAME.tar.gz"
-          UKI_PATH=$(find extracted -name "*.efi" | head -1)
+          UKI_PATH=$(find extracted -name "*.uki" | head -1)
           if [ -z "$UKI_PATH" ]; then
-            echo "::error::No .efi UKI file found in build artifact"
+            echo "::error::No .uki file found in build artifact"
             ls -la extracted/ || true
             exit 1
           fi

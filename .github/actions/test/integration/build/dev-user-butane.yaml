@@ -54,8 +54,8 @@ storage:
         OCI_TAG=TAG_GOES_HERE
   # Hook called by persist (chrooted into the new sysroot) after the UKI is
   # downloaded and before systemd-repart partitions the disk.
-  # Patches the freshly-downloaded UKI so the second boot also gets serial
-  # console output and ignition runs again (for SSH authorized_keys etc.).
+  # Ensures the second boot brings networking up (DHCP) and starts SSH so the
+  # CI can reach the VM. Does NOT depend on objcopy/binutils being present.
   - path: /opt/persist/network_up.sh
     mode: 0755
     contents:
@@ -63,22 +63,42 @@ storage:
         #!/usr/bin/env bash
         set -Eeuo pipefail
 
-        # Patch the downloaded UKI's .cmdline section so the second boot
-        # also has serial console output and ignition can configure SSH.
-        UKI=$(ls /efi/EFI/Linux/*.efi 2>/dev/null | head -1 || true)
-        if [ -n "$UKI" ]; then
-            objcopy --dump-section .cmdline=/tmp/cmdline.bin "$UKI"
-            CURRENT=$(tr -d '\0\n' < /tmp/cmdline.bin)
-            printf '%s' "$CURRENT console=ttyS0 ignition.platform.id=qemu" \
-                > /tmp/cmdline-new.bin
-            objcopy --update-section .cmdline=/tmp/cmdline-new.bin \
-                "$UKI" "${UKI}.patched"
-            mv "${UKI}.patched" "$UKI"
-            echo "Patched second-boot UKI cmdline: $CURRENT console=ttyS0 ignition.platform.id=qemu"
-        fi
+        # Drop a systemd-networkd config so the second boot gets DHCP on all
+        # Ethernet interfaces (virtio-net shows up as e*). This is the critical
+        # fix: without it the second boot never acquires a DHCP lease.
+        mkdir -p /etc/systemd/network
+        cat > /etc/systemd/network/80-dhcp.network <<'EOF'
+        [Match]
+        Name=e*
 
-        # Ensure the SSH daemon is enabled for the second boot.
+        [Network]
+        DHCP=yes
+        EOF
+        echo "Wrote /etc/systemd/network/80-dhcp.network for second-boot DHCP"
+
+        # Ensure networking and SSH come up on the second boot.
+        systemctl enable systemd-networkd.service || true
         systemctl enable ssh.service || true
+
+        # Best-effort: patch the downloaded UKI's .cmdline section so the second
+        # boot also has serial console output and ignition can configure SSH.
+        # Only attempt this if objcopy is actually available; its absence must
+        # not abort the script (which would skip the networking fix above).
+        if command -v objcopy >/dev/null 2>&1; then
+            UKI=$(ls /efi/EFI/Linux/*.efi 2>/dev/null | head -1 || true)
+            if [ -n "$UKI" ]; then
+                objcopy --dump-section .cmdline=/tmp/cmdline.bin "$UKI"
+                CURRENT=$(tr -d '\0\n' < /tmp/cmdline.bin)
+                printf '%s' "$CURRENT console=ttyS0 ignition.platform.id=qemu" \
+                    > /tmp/cmdline-new.bin
+                objcopy --update-section .cmdline=/tmp/cmdline-new.bin \
+                    "$UKI" "${UKI}.patched"
+                mv "${UKI}.patched" "$UKI"
+                echo "Patched second-boot UKI cmdline: $CURRENT console=ttyS0 ignition.platform.id=qemu"
+            fi
+        else
+            echo "objcopy not available; skipping UKI cmdline patch"
+        fi
   # Enable unlimited core dumps for all systemd services
   - path: /etc/systemd/system.conf.d/10-core.conf
     mode: 0644

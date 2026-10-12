@@ -154,6 +154,13 @@ runs:
         sudo ln -sf /usr/lib/systemd/system/ssh.service \
             "$RUNNER_TEMP/var/etc.overlay/systemd/system/multi-user.target.wants/ssh.service"
 
+        # Mask OVS services: ovsdb-server fails in CI (no persistent OVS DB)
+        # and ovs-vswitchd then blocks multi-user.target for 5 minutes.
+        # Masking (symlink to /dev/null) prevents them from starting.
+        sudo ln -sf /dev/null "$RUNNER_TEMP/var/etc.overlay/systemd/system/ovsdb-server.service"
+        sudo ln -sf /dev/null "$RUNNER_TEMP/var/etc.overlay/systemd/system/ovs-vswitchd.service"
+        sudo ln -sf /dev/null "$RUNNER_TEMP/var/etc.overlay/systemd/system/openvswitch-switch.service"
+
         # Hosts file for HV-to-HV communication
         # Use printf to avoid literal tabs which break YAML parsing
         printf '127.0.0.1\tlocalhost\n127.0.1.1\tgarden\n::1\tlocalhost ip6-localhost ip6-loopback\nff02::1\tip6-allnodes\nff02::2\tip6-allrouters\n192.168.122.2 hv1\n192.168.122.3 hv2\n' | sudo tee "$RUNNER_TEMP/var/etc.overlay/hosts" > /dev/null

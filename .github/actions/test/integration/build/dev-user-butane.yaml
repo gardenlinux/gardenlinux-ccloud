@@ -67,18 +67,14 @@ storage:
         # Ethernet interfaces (virtio-net shows up as e*). This is the critical
         # fix: without it the second boot never acquires a DHCP lease.
         mkdir -p /etc/systemd/network
-        cat > /etc/systemd/network/80-dhcp.network <<'EOF'
-        [Match]
-        Name=e*
-
-        [Network]
-        DHCP=yes
-        EOF
+        printf '[Match]\nName=e*\n\n[Network]\nDHCP=yes\n' \
+            > /etc/systemd/network/80-dhcp.network
         echo "Wrote /etc/systemd/network/80-dhcp.network for second-boot DHCP"
 
-        # Ensure networking and SSH come up on the second boot.
-        systemctl enable systemd-networkd.service || true
-        systemctl enable ssh.service || true
+        # Enable networking and SSH via systemctl --root so symlinks are created
+        # even though systemd is not running inside the chroot.
+        systemctl --root=/ enable systemd-networkd.service || true
+        systemctl --root=/ enable ssh.service || true
 
         # Best-effort: patch the downloaded UKI's .cmdline section so the second
         # boot also has serial console output and ignition can configure SSH.

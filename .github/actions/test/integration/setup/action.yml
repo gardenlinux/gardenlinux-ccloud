@@ -27,11 +27,15 @@ runs:
         # finds it before the device-level Sata() entry created by bootindex=1.
         # OVMF tries BootOrder entries in order; our entry becomes Boot0000 and
         # goes first, so it finds the UKI at \EFI\BOOT\BOOTX64.EFI on the ESP.
+        #
+        # The optional data after the filepath becomes the UEFI LoadOptions, which
+        # systemd-stub appends to the UKI's embedded .cmdline — this is how we pass
+        # ignition first-boot parameters without modifying (and invalidating) the UKI.
         virt-fw-vars \
           --input /usr/share/OVMF/OVMF_VARS_4M.fd \
           --output /tmp/VARS-hv.fd \
-          --append-boot-filepath '\EFI\BOOT\BOOTX64.EFI'
-        echo "VARS created successfully with boot entry"
+          --append-boot-filepath '\EFI\BOOT\BOOTX64.EFI earlycon=uart8250,io,0x3f8 earlyprintk=serial,ttyS0 console=ttyS0 ignition.firstboot=1 ignition.platform.id=qemu'
+        echo "VARS created successfully with boot entry and ignition kernel args"
 
         sudo cp /tmp/VARS-hv.fd /var/lib/libvirt/qemu/nvram/HV1_VARS.fd
         sudo cp /tmp/VARS-hv.fd /var/lib/libvirt/qemu/nvram/HV2_VARS.fd

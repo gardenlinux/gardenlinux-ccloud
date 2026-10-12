@@ -86,31 +86,6 @@ runs:
         sudo mkfs.vfat -F32 "$ESP_PART"
         sudo mkfs.ext4 "$VAR_PART" -L VAR
 
-    - name: Patch UKI cmdline with ignition parameters
-      shell: bash
-      run: |
-        UKI="$RUNNER_TEMP/$TAG.uki"
-        PATCHED_UKI="$RUNNER_TEMP/${TAG}-patched.uki"
-
-        # Extract the embedded cmdline from the UKI's .cmdline PE section
-        objcopy --dump-section .cmdline="$RUNNER_TEMP/cmdline.bin" "$UKI"
-        # The .cmdline section may or may not be NUL-terminated; strip any trailing NUL/newline
-        CURRENT_CMDLINE=$(tr -d '\0\n' < "$RUNNER_TEMP/cmdline.bin")
-        echo "Original cmdline: $CURRENT_CMDLINE"
-
-        # Append ignition boot parameters and serial console for the hypervisor test environment.
-        # earlycon=uart8250,io,0x3f8: very early serial output before the driver initialises
-        # console=ttyS0: kernel serial console (post-driver)
-        # earlyprintk=serial,ttyS0: additional early printk path
-        NEW_CMDLINE="$CURRENT_CMDLINE earlycon=uart8250,io,0x3f8 earlyprintk=serial,ttyS0 console=ttyS0 ignition.firstboot=1 ignition.platform.id=qemu"
-        echo "Patched cmdline:  $NEW_CMDLINE"
-
-        printf '%s' "$NEW_CMDLINE" > "$RUNNER_TEMP/cmdline-patched.bin"
-
-        # Reinsert the patched cmdline section into the UKI
-        objcopy --update-section .cmdline="$RUNNER_TEMP/cmdline-patched.bin" "$UKI" "$PATCHED_UKI"
-        mv "$PATCHED_UKI" "$UKI"
-
     - name: Populate the ESP partition
       shell: bash
       run: |

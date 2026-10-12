@@ -130,11 +130,14 @@ runs:
         sudo mkdir -p "$RUNNER_TEMP/var/home"
         sudo mkdir -p "$RUNNER_TEMP/var/opt"
 
-        # SSH: allow root login with the CI key
+        # SSH: allow root login with the CI key.
+        # We replace sshd_config in the overlay (it shadows the lowerdir copy).
+        # Mirror the base sshd_config from features/ssh/file.include but flip
+        # PermitRootLogin to yes and add AuthorizedKeysFile for the CI key.
         sudo mkdir -p "$RUNNER_TEMP/var/etc.overlay/ssh"
         echo "$SSH_KEY" | sudo tee "$RUNNER_TEMP/var/etc.overlay/ssh/authorized_keys" > /dev/null
         sudo chmod 600 "$RUNNER_TEMP/var/etc.overlay/ssh/authorized_keys"
-        printf 'PermitRootLogin yes\nAuthorizedKeysFile /etc/ssh/authorized_keys\nProtocol 2\nAuthenticationMethods publickey\nSubsystem sftp /usr/lib/openssh/sftp-server\n' | sudo tee "$RUNNER_TEMP/var/etc.overlay/ssh/sshd_config" > /dev/null
+        printf 'PermitRootLogin yes\nX11Forwarding no\nStrictModes yes\nIgnoreRhosts yes\nHostbasedAuthentication no\nLogLevel VERBOSE\nUsePAM yes\nPrintMotd no\nAcceptEnv LANG\nSubsystem sftp /usr/lib/openssh/sftp-server -f AUTHPRIV -l INFO\nClientAliveInterval 600\nClientAliveCountMax 0\nAuthenticationMethods publickey\nAuthorizedKeysFile /etc/ssh/authorized_keys\nHostKey /etc/ssh/ssh_host_ed25519_key\nHostKey /etc/ssh/ssh_host_rsa_key\nInclude /etc/ssh/sshd_config.d/*.conf\n' | sudo tee "$RUNNER_TEMP/var/etc.overlay/ssh/sshd_config" > /dev/null
 
         # systemd-networkd: bring up DHCP on all Ethernet interfaces
         sudo mkdir -p "$RUNNER_TEMP/var/etc.overlay/systemd/network"

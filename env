@@ -1,0 +1,5 @@
+export GITHUB_REPOSITORY=gardenlinux/gardenlinux-sci
+export RELEASE_LINE=2150
+export TARGET_BRANCH=rel-2150-dev
+export GARDENLINUX_UPSTREAM_TAG=2150.12.0
+export REPOSITORY_TAG=2150.12.0

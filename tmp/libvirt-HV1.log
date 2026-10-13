@@ -1,0 +1,47 @@
+2026-09-18 12:37:22.897+0000: starting up libvirt version: 10.0.0, package: 10.0.0-2ubuntu8.16 (Ubuntu), qemu version: 8.2.2Debian 1:8.2.2+ds-0ubuntu1.18, kernel: 6.17.0-1022-azure, hostname: runnervmlun5p.twwycwkaznxeznykkqsgfknjya.cx.internal.cloudapp.net
+LC_ALL=C \
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/snap/bin \
+USER=root \
+HOME=/var/lib/libvirt/qemu/domain-1-HV1 \
+XDG_DATA_HOME=/var/lib/libvirt/qemu/domain-1-HV1/.local/share \
+XDG_CACHE_HOME=/var/lib/libvirt/qemu/domain-1-HV1/.cache \
+XDG_CONFIG_HOME=/var/lib/libvirt/qemu/domain-1-HV1/.config \
+/usr/bin/qemu-system-x86_64 \
+-name guest=HV1,debug-threads=on \
+-S \
+-object '{"qom-type":"secret","id":"masterKey0","format":"raw","file":"/var/lib/libvirt/qemu/domain-1-HV1/master-key.aes"}' \
+-blockdev '{"driver":"file","filename":"/usr/share/OVMF/OVMF_CODE_4M.fd","node-name":"libvirt-pflash0-storage","auto-read-only":true,"discard":"unmap"}' \
+-blockdev '{"node-name":"libvirt-pflash0-format","read-only":true,"driver":"raw","file":"libvirt-pflash0-storage"}' \
+-blockdev '{"driver":"file","filename":"/var/lib/libvirt/qemu/nvram/HV1_VARS.fd","node-name":"libvirt-pflash1-storage","auto-read-only":true,"discard":"unmap"}' \
+-blockdev '{"node-name":"libvirt-pflash1-format","read-only":false,"driver":"raw","file":"libvirt-pflash1-storage"}' \
+-machine pc-i440fx-noble-v2,usb=off,dump-guest-core=off,memory-backend=pc.ram,pflash0=libvirt-pflash0-format,pflash1=libvirt-pflash1-format,acpi=on \
+-accel kvm \
+-cpu host,migratable=on \
+-m size=6291456k \
+-object '{"qom-type":"memory-backend-ram","id":"pc.ram","size":6442450944}' \
+-overcommit mem-lock=off \
+-smp 4,sockets=4,cores=1,threads=1 \
+-uuid 5cde795c-844b-4b8a-864c-0ddad5d0f01d \
+-display none \
+-no-user-config \
+-nodefaults \
+-chardev socket,id=charmonitor,fd=32,server=on,wait=off \
+-mon chardev=charmonitor,id=monitor,mode=control \
+-rtc base=utc \
+-no-shutdown \
+-boot strict=on \
+-device '{"driver":"piix3-usb-uhci","id":"usb","bus":"pci.0","addr":"0x1.0x2"}' \
+-blockdev '{"driver":"file","filename":"/var/lib/libvirt/images/HV1.qcow2","node-name":"libvirt-1-storage","auto-read-only":true,"discard":"unmap"}' \
+-blockdev '{"node-name":"libvirt-1-format","read-only":false,"driver":"qcow2","file":"libvirt-1-storage","backing":null}' \
+-device '{"driver":"virtio-blk-pci","bus":"pci.0","addr":"0x3","drive":"libvirt-1-format","id":"virtio-disk0","bootindex":1}' \
+-netdev '{"type":"tap","fd":"34","vhost":true,"vhostfd":"36","id":"hostnet0"}' \
+-device '{"driver":"virtio-net-pci","netdev":"hostnet0","id":"net0","mac":"52:54:00:12:34:56","bus":"pci.0","addr":"0x2"}' \
+-add-fd set=0,fd=33,opaque=serial0-source \
+-chardev file,id=charserial0,path=/dev/fdset/0,append=on \
+-device '{"driver":"isa-serial","chardev":"charserial0","id":"serial0","index":0}' \
+-audiodev '{"id":"audio1","driver":"none"}' \
+-device '{"driver":"virtio-balloon-pci","id":"balloon0","bus":"pci.0","addr":"0x4"}' \
+-fw_cfg name=opt/com.coreos/config,file=/var/lib/libvirt/images/HV1.ign \
+-sandbox on,obsolete=deny,elevateprivileges=deny,spawn=deny,resourcecontrol=deny \
+-msg timestamp=on
+2026-09-18 12:37:22.897+0000: Domain id=1 is tainted: custom-argv

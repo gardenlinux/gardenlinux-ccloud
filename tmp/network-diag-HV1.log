@@ -1,0 +1,171 @@
+Warning: Permanently added '192.168.122.2' (ED25519) to the list of known hosts.
+=== ip addr ===
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN group default qlen 1000
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+    inet 127.0.0.1/8 scope host lo
+       valid_lft forever preferred_lft forever
+    inet6 ::1/128 scope host noprefixroute 
+       valid_lft forever preferred_lft forever
+2: ens2: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc fq_codel state UP group default qlen 1000
+    link/ether 52:54:00:12:34:56 brd ff:ff:ff:ff:ff:ff
+    altname enp0s2
+    altname enx525400123456
+    inet 192.168.122.2/24 metric 1024 brd 192.168.122.255 scope global dynamic ens2
+       valid_lft 3118sec preferred_lft 3118sec
+    inet6 fe80::5054:ff:fe12:3456/64 scope link proto kernel_ll 
+       valid_lft forever preferred_lft forever
+3: virbr0: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc noqueue state DOWN group default qlen 1000
+    link/ether 52:54:00:86:53:c7 brd ff:ff:ff:ff:ff:ff
+    inet 192.168.222.1/24 brd 192.168.222.255 scope global virbr0
+       valid_lft forever preferred_lft forever
+=== ip route ===
+default via 192.168.122.1 dev ens2 proto dhcp src 192.168.122.2 metric 1024 
+192.168.122.0/24 dev ens2 proto kernel scope link src 192.168.122.2 metric 1024 
+192.168.122.1 dev ens2 proto dhcp scope link src 192.168.122.2 metric 1024 
+192.168.222.0/24 dev virbr0 proto kernel scope link src 192.168.222.1 linkdown 
+=== bridge link ===
+=== arp -n ===
+Address                  HWtype  HWaddress           Flags Mask            Iface
+192.168.122.1            ether   52:54:00:67:5a:c2   C                     ens2
+192.168.122.3            ether   52:54:00:65:43:21   C                     ens2
+=== iptables -L -n ===
+Chain INPUT (policy ACCEPT)
+target     prot opt source               destination         
+LIBVIRT_INP  all  --  0.0.0.0/0            0.0.0.0/0           
+
+Chain FORWARD (policy ACCEPT)
+target     prot opt source               destination         
+LIBVIRT_FWX  all  --  0.0.0.0/0            0.0.0.0/0           
+LIBVIRT_FWI  all  --  0.0.0.0/0            0.0.0.0/0           
+LIBVIRT_FWO  all  --  0.0.0.0/0            0.0.0.0/0           
+
+Chain OUTPUT (policy ACCEPT)
+target     prot opt source               destination         
+LIBVIRT_OUT  all  --  0.0.0.0/0            0.0.0.0/0           
+
+Chain LIBVIRT_FWI (1 references)
+target     prot opt source               destination         
+ACCEPT     all  --  0.0.0.0/0            192.168.222.0/24     ctstate RELATED,ESTABLISHED
+REJECT     all  --  0.0.0.0/0            0.0.0.0/0            reject-with icmp-port-unreachable
+
+Chain LIBVIRT_FWO (1 references)
+target     prot opt source               destination         
+ACCEPT     all  --  192.168.222.0/24     0.0.0.0/0           
+REJECT     all  --  0.0.0.0/0            0.0.0.0/0            reject-with icmp-port-unreachable
+
+Chain LIBVIRT_FWX (1 references)
+target     prot opt source               destination         
+ACCEPT     all  --  0.0.0.0/0            0.0.0.0/0           
+
+Chain LIBVIRT_INP (1 references)
+target     prot opt source               destination         
+ACCEPT     udp  --  0.0.0.0/0            0.0.0.0/0            udp dpt:53
+ACCEPT     tcp  --  0.0.0.0/0            0.0.0.0/0            tcp dpt:53
+ACCEPT     udp  --  0.0.0.0/0            0.0.0.0/0            udp dpt:67
+ACCEPT     tcp  --  0.0.0.0/0            0.0.0.0/0            tcp dpt:67
+
+Chain LIBVIRT_OUT (1 references)
+target     prot opt source               destination         
+ACCEPT     udp  --  0.0.0.0/0            0.0.0.0/0            udp dpt:53
+ACCEPT     tcp  --  0.0.0.0/0            0.0.0.0/0            tcp dpt:53
+ACCEPT     udp  --  0.0.0.0/0            0.0.0.0/0            udp dpt:68
+ACCEPT     tcp  --  0.0.0.0/0            0.0.0.0/0            tcp dpt:68
+=== iptables -t nat -L -n ===
+Chain PREROUTING (policy ACCEPT)
+target     prot opt source               destination         
+
+Chain INPUT (policy ACCEPT)
+target     prot opt source               destination         
+
+Chain OUTPUT (policy ACCEPT)
+target     prot opt source               destination         
+
+Chain POSTROUTING (policy ACCEPT)
+target     prot opt source               destination         
+LIBVIRT_PRT  all  --  0.0.0.0/0            0.0.0.0/0           
+
+Chain LIBVIRT_PRT (1 references)
+target     prot opt source               destination         
+RETURN     all  --  192.168.222.0/24     224.0.0.0/24        
+RETURN     all  --  192.168.222.0/24     255.255.255.255     
+MASQUERADE  tcp  --  192.168.222.0/24    !192.168.222.0/24     masq ports: 1024-65535
+MASQUERADE  udp  --  192.168.222.0/24    !192.168.222.0/24     masq ports: 1024-65535
+MASQUERADE  all  --  192.168.222.0/24    !192.168.222.0/24    
+=== virsh net-list ===
+ Name      State    Autostart   Persistent
+--------------------------------------------
+ default   active   yes         yes
+
+=== virsh net-dumpxml default ===
+<network>
+  <name>default</name>
+  <uuid>df6cbba7-c4f6-4b44-9e03-21a890712b7e</uuid>
+  <forward mode='nat'>
+    <nat>
+      <port start='1024' end='65535'/>
+    </nat>
+  </forward>
+  <bridge name='virbr0' stp='on' delay='0'/>
+  <mac address='52:54:00:86:53:c7'/>
+  <ip address='192.168.222.1' netmask='255.255.255.0'>
+    <dhcp>
+      <range start='192.168.222.100' end='192.168.222.254'/>
+      <host mac='52:54:00:00:00:01' name='vm-qemu' ip='192.168.222.2'/>
+      <host mac='52:54:00:00:00:11' name='vm-chv' ip='192.168.222.3'/>
+    </dhcp>
+  </ip>
+</network>
+
+=== dnsmasq leases ===
+=== systemctl status systemd-networkd ===
+● systemd-networkd.service - Network Management
+     Loaded: loaded (/usr/lib/systemd/system/systemd-networkd.service; enabled; preset: enabled)
+     Active: active (running) since Fri 2026-09-18 12:38:46 UTC; 8min ago
+ Invocation: 057f5c4ccb4f4070b4c434993552f164
+TriggeredBy: ● systemd-networkd-resolve-hook.socket
+             ● systemd-networkd.socket
+             ● systemd-networkd-varlink.socket
+             ● systemd-networkd-varlink-metrics.socket
+       Docs: man:systemd-networkd.service(8)
+             man:org.freedesktop.network1(5)
+   Main PID: 602 (systemd-network)
+     Status: "Processing requests..."
+      Tasks: 1 (limit: 6549)
+   FD Store: 0 (limit: 512)
+     Memory: 4.4M (peak: 8.2M)
+        CPU: 217ms
+     CGroup: /system.slice/systemd-networkd.service
+             └─602 /usr/lib/systemd/systemd-networkd
+
+Sep 18 12:42:20 hv1 systemd-networkd[602]: vnet0: Link DOWN
+Sep 18 12:42:20 hv1 systemd-networkd[602]: vnet0: Lost carrier
+Sep 18 12:42:20 hv1 systemd-networkd[602]: virbr0: Lost carrier
+Sep 18 12:44:10 hv1 systemd-networkd[602]: vnet1: Link UP
+Sep 18 12:44:10 hv1 systemd-networkd[602]: vnet1: Gained carrier
+Sep 18 12:44:12 hv1 systemd-networkd[602]: vnet1: Gained IPv6LL
+Sep 18 12:44:14 hv1 systemd-networkd[602]: virbr0: Gained carrier
+Sep 18 12:45:42 hv1 systemd-networkd[602]: vnet1: Link DOWN
+Sep 18 12:45:42 hv1 systemd-networkd[602]: vnet1: Lost carrier
+Sep 18 12:45:42 hv1 systemd-networkd[602]: virbr0: Lost carrier
+=== networkctl status ===
+● Interfaces: 1, 2, 3
+       State: routable
+Online state: online
+     Address: 192.168.122.2 on ens2
+              192.168.222.1 on virbr0
+              fe80::5054:ff:fe12:3456 on ens2
+     Gateway: 192.168.122.1 on ens2
+         DNS: 192.168.122.1
+
+Sep 18 12:42:20 hv1 systemd-networkd[602]: vnet0: Link DOWN
+Sep 18 12:42:20 hv1 systemd-networkd[602]: vnet0: Lost carrier
+Sep 18 12:42:20 hv1 systemd-networkd[602]: virbr0: Lost carrier
+Sep 18 12:44:10 hv1 systemd-networkd[602]: vnet1: Link UP
+Sep 18 12:44:10 hv1 systemd-networkd[602]: vnet1: Gained carrier
+Sep 18 12:44:12 hv1 systemd-networkd[602]: vnet1: Gained IPv6LL
+Sep 18 12:44:14 hv1 systemd-networkd[602]: virbr0: Gained carrier
+Sep 18 12:45:42 hv1 systemd-networkd[602]: vnet1: Link DOWN
+Sep 18 12:45:42 hv1 systemd-networkd[602]: vnet1: Lost carrier
+Sep 18 12:45:42 hv1 systemd-networkd[602]: virbr0: Lost carrier
+=== ssh -V ===
+OpenSSH_10.5p1 Debian-1gl0, OpenSSL 3.5.5 27 Jan 2026

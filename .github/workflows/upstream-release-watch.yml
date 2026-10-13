@@ -35,9 +35,9 @@ jobs:
             branch: rel-1877-dev
           - release_line: "2150"
             branch: rel-2150-dev
-    if: github.event_name != 'workflow_dispatch' || inputs.release_line == 'all' || inputs.release_line == matrix.release_line
     steps:
       - name: Checkout repository branch
+        if: github.event_name != 'workflow_dispatch' || inputs.release_line == 'all' || inputs.release_line == matrix.release_line
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           ref: ${{ matrix.branch }}
@@ -45,6 +45,7 @@ jobs:
           submodules: recursive
 
       - name: Detect latest upstream release for line ${{ matrix.release_line }}
+        if: github.event_name != 'workflow_dispatch' || inputs.release_line == 'all' || inputs.release_line == matrix.release_line
         id: detect
         env:
           GH_TOKEN: ${{ github.token }}
@@ -53,7 +54,7 @@ jobs:
           set -euo pipefail
 
           upstream_tag=$(gh api repos/gardenlinux/gardenlinux/releases --paginate --jq '.[] | select((.draft | not) and (.prerelease | not)) | .tag_name' \
-            | rg "^${RELEASE_LINE}\\." \
+            | grep -E "^${RELEASE_LINE}\\." \
             | sort -V \
             | tail -n 1)
 
@@ -81,6 +82,7 @@ jobs:
           } >> "${GITHUB_OUTPUT}"
 
       - name: Show decision
+        if: github.event_name != 'workflow_dispatch' || inputs.release_line == 'all' || inputs.release_line == matrix.release_line
         run: |
           echo "release_line=${{ matrix.release_line }}"
           echo "branch=${{ matrix.branch }}"
@@ -89,7 +91,7 @@ jobs:
           echo "tag_exists=${{ steps.detect.outputs.tag_exists }}"
 
       - name: Execute repository script
-        if: github.event_name == 'workflow_dispatch' && inputs.force_run || steps.detect.outputs.tag_exists != 'true'
+        if: (github.event_name != 'workflow_dispatch' || inputs.release_line == 'all' || inputs.release_line == matrix.release_line) && ((github.event_name == 'workflow_dispatch' && inputs.force_run) || steps.detect.outputs.tag_exists != 'true')
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_LINE: ${{ matrix.release_line }}

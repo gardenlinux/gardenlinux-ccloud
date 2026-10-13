@@ -1,0 +1,102 @@
+name: upstream-release-watch
+
+on:
+  schedule:
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+    inputs:
+      release_line:
+        description: "Release line to process"
+        required: false
+        default: all
+        type: choice
+        options:
+          - all
+          - "1877"
+          - "2150"
+      force_run:
+        description: "Run the script even if the mapped tag already exists in this repository"
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  track_upstream_release_line:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - release_line: "1877"
+            branch: rel-1877-dev
+          - release_line: "2150"
+            branch: rel-2150-dev
+    if: github.event_name != 'workflow_dispatch' || inputs.release_line == 'all' || inputs.release_line == matrix.release_line
+    steps:
+      - name: Checkout repository branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ matrix.branch }}
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Detect latest upstream release for line ${{ matrix.release_line }}
+        id: detect
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_LINE: ${{ matrix.release_line }}
+        run: |
+          set -euo pipefail
+
+          upstream_tag=$(gh api repos/gardenlinux/gardenlinux/releases --paginate --jq '.[] | select((.draft | not) and (.prerelease | not)) | .tag_name' \
+            | rg "^${RELEASE_LINE}\\." \
+            | sort -V \
+            | tail -n 1)
+
+          if [[ -z "${upstream_tag}" ]]; then
+            echo "No upstream release found for line ${RELEASE_LINE}"
+            exit 1
+          fi
+
+          if [[ "${RELEASE_LINE}" == "1877" ]]; then
+            repo_tag="${upstream_tag}.0"
+          else
+            repo_tag="${upstream_tag}"
+          fi
+
+          if git rev-parse -q --verify "refs/tags/${repo_tag}" >/dev/null; then
+            tag_exists=true
+          else
+            tag_exists=false
+          fi
+
+          {
+            echo "upstream_tag=${upstream_tag}"
+            echo "repo_tag=${repo_tag}"
+            echo "tag_exists=${tag_exists}"
+          } >> "${GITHUB_OUTPUT}"
+
+      - name: Show decision
+        run: |
+          echo "release_line=${{ matrix.release_line }}"
+          echo "branch=${{ matrix.branch }}"
+          echo "upstream_tag=${{ steps.detect.outputs.upstream_tag }}"
+          echo "repo_tag=${{ steps.detect.outputs.repo_tag }}"
+          echo "tag_exists=${{ steps.detect.outputs.tag_exists }}"
+
+      - name: Execute repository script
+        if: github.event_name == 'workflow_dispatch' && inputs.force_run || steps.detect.outputs.tag_exists != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_LINE: ${{ matrix.release_line }}
+          TARGET_BRANCH: ${{ matrix.branch }}
+          GARDENLINUX_UPSTREAM_TAG: ${{ steps.detect.outputs.upstream_tag }}
+          REPOSITORY_TAG: ${{ steps.detect.outputs.repo_tag }}
+        run: |
+          set -euo pipefail
+          echo "Running .github/scripts/on-new-gardenlinux-release.sh for release line ${RELEASE_LINE}: upstream=${GARDENLINUX_UPSTREAM_TAG}, repo=${REPOSITORY_TAG}, branch=${TARGET_BRANCH}"
+          bash .github/scripts/on-new-gardenlinux-release.sh "${RELEASE_LINE}" "${GARDENLINUX_UPSTREAM_TAG}" "${REPOSITORY_TAG}" "${TARGET_BRANCH}"

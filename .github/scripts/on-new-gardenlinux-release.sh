@@ -65,6 +65,7 @@ git config user.name "github-actions[bot]"
 git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
 git add -A
+git restore -WS .github/workflows
 git commit -m "Track upstream ${release_line} release ${repo_tag}"
 git push --force-with-lease origin "${work_branch}"
 
@@ -80,6 +81,9 @@ pr_body=$(cat <<EOF
 - update the Garden Linux submodule to ${upstream_commit_sha}
 - refresh workflow references via \`COMMIT=${upstream_commit_sha} make update\`
 - set \`VERSION=${repo_tag}\`
+
+## TODO
+- [ ] update the workflows manually
 EOF
 )
 
